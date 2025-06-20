@@ -459,60 +459,110 @@ with tabs[3]:
         data2 = st.text_area("结构化数据2 (JSON)", height=200, key="diff2")
     if st.button("对比并高亮差异", key="do_diff"):
         try:
-            import difflib
-            d1 = json.dumps(json.loads(data1), ensure_ascii=False, indent=2).splitlines()
-            d2 = json.dumps(json.loads(data2), ensure_ascii=False, indent=2).splitlines()
-            diff = difflib.unified_diff(d1, d2, fromfile='数据1', tofile='数据2', lineterm='')
-            st.code('\n'.join(diff), language='diff')
+            from deepdiff import DeepDiff
+            obj1 = json.loads(data1)
+            obj2 = json.loads(data2)
+            diff = DeepDiff(obj1, obj2, view='tree', ignore_order=True)
+            if not diff:
+                st.success("两个结构化数据完全一致！")
+            else:
+                for k, v in diff.items():
+                    st.warning(f"{k}")
+                    for item in v:
+                        st.code(str(item), language='json')
         except Exception as e:
             st.error(f"对比失败：{e}")
     st.markdown("---")
-    # 2. 数据可视化与SEO趋势分析
-    st.subheader("数据可视化与SEO趋势分析")
-    uploaded = st.file_uploader("上传结构化数据历史/SEO报告(JSON)", type=['json'], key="seo_trend")
-    if uploaded:
-        try:
-            import pandas as pd
-            import altair as alt
-            data = json.load(uploaded)
-            if isinstance(data, list):
-                df = pd.DataFrame(data)
-            else:
-                df = pd.DataFrame([data])
-            st.dataframe(df)
-            if 'date' in df.columns and 'rich_snippet' in df.columns:
-                chart = alt.Chart(df).mark_line(point=True).encode(
-                    x='date:T', y='rich_snippet:Q', tooltip=list(df.columns)
-                ).properties(title="富摘要获取趋势")
-                st.altair_chart(chart, use_container_width=True)
-        except Exception as e:
-            st.error(f"可视化失败：{e}")
-    st.markdown("---")
-    # 3. SEO富摘要监控与推送
+    # 2. SEO富摘要监控与推送
     st.subheader("SEO富摘要监控与推送")
     url = st.text_input("输入网站URL进行富摘要监控", key="seo_monitor")
     if st.button("检测富摘要", key="check_rich_snippet"):
-        st.info("（演示）已模拟检测，未来可对接Google/Bing API或爬虫自动抓取。")
-        st.write({"url": url, "rich_snippet_types": ["Product", "FAQPage"], "last_checked": "2024-05-01"})
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+            resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            scripts = soup.find_all('script', type='application/ld+json')
+            types = []
+            for s in scripts:
+                try:
+                    d = json.loads(s.string)
+                    if isinstance(d, dict):
+                        types.append(d.get('@type', '未知'))
+                    elif isinstance(d, list):
+                        types.extend([item.get('@type', '未知') for item in d if isinstance(item, dict)])
+                except:
+                    continue
+            st.success(f"共检测到{len(types)}个结构化数据块，类型：{', '.join(types)}")
+            st.json(types)
+        except Exception as e:
+            st.error(f"检测失败：{e}")
     st.markdown("---")
-    # 4. 结构化数据知识库/案例库
+    # 3. 结构化数据知识库/案例库
     st.subheader("结构化数据知识库/案例库")
+    # 简单本地知识库
+    kb = [
+        {"type": "Product", "desc": "商品结构化数据案例", "json": {"@context": "https://schema.org", "@type": "Product", "name": "示例商品", "offers": {"@type": "Offer", "price": "99.99", "priceCurrency": "CNY"}}},
+        {"type": "FAQPage", "desc": "FAQ结构化案例", "json": {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "退货政策？", "acceptedAnswer": {"@type": "Answer", "text": "支持7天无理由退货。"}}]}},
+        {"type": "Event", "desc": "活动结构化案例", "json": {"@context": "https://schema.org", "@type": "Event", "name": "技术大会", "startDate": "2025-12-15T09:00:00+08:00"}}
+    ]
     kb_query = st.text_input("搜索schema.org字段/案例", key="kb_query")
-    if st.button("搜索知识库", key="search_kb"):
-        st.info("（演示）可对接本地/云端知识库，支持关键词搜索、分类浏览、案例一键插入。")
-        st.write({"query": kb_query, "result": ["Product: 商品结构化数据案例", "FAQPage: FAQ结构化案例"]})
+    kb_results = [item for item in kb if kb_query.lower() in item['type'].lower() or kb_query in item['desc']]
+    for item in kb_results:
+        st.markdown(f"**{item['type']}** - {item['desc']}")
+        st.code(json.dumps(item['json'], ensure_ascii=False, indent=2), language='json')
+        if st.button(f"插入到编辑区: {item['type']}", key=f"insert_{item['type']}"):
+            st.session_state['editor_content'] = json.dumps(item['json'], ensure_ascii=False, indent=2)
+            st.toast(f"已插入{item['type']}案例到编辑区！", icon="✅")
     st.markdown("---")
-    # 5. 内容与结构一体化编辑
+    # 4. 内容与结构一体化编辑
     st.subheader("内容与结构一体化编辑")
     content = st.text_area("网页内容编辑区", height=120, key="content_edit")
     if st.button("同步生成结构化数据", key="sync_structured"):
-        st.info("（演示）可用AI/NLP自动抽取内容生成结构化数据。")
-        st.code(f'{{"@context": "https://schema.org", "@type": "Article", "text": "{content[:30]}..."}}', language='json')
+        try:
+            import openai
+            openai.api_key = os.getenv("OPENAI_API_KEY", "")
+            if openai.api_key:
+                prompt = f"请为以下网页内容生成schema.org结构化数据JSON-LD：\n{content}"
+                resp = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.2,
+                    max_tokens=512
+                )
+                result = resp.choices[0].message.content
+                st.code(result, language='json')
+            else:
+                # 无API Key时用规则生成
+                st.code(json.dumps({"@context": "https://schema.org", "@type": "Article", "text": content[:30]}, ensure_ascii=False, indent=2), language='json')
+        except Exception as e:
+            st.error(f"生成失败：{e}")
     st.markdown("---")
-    # 6. 行业模板市场/社区生态
+    # 5. 行业模板市场/社区生态
     st.subheader("行业模板市场/社区生态")
-    st.info("（演示）支持上传/下载行业模板，评分、评论、收藏，形成社区生态。")
-    st.file_uploader("上传行业结构化数据模板", type=['json'], key="market_upload")
+    if 'market_templates' not in st.session_state:
+        st.session_state['market_templates'] = []
+    uploaded = st.file_uploader("上传行业结构化数据模板", type=['json'], key="market_upload")
+    if uploaded:
+        try:
+            tpl = json.load(uploaded)
+            st.session_state['market_templates'].append({"json": tpl, "score": 0, "fav": False})
+            st.toast("模板上传成功！", icon="✅")
+            st.experimental_rerun()
+        except Exception as e:
+            st.error(f"模板上传失败：{e}")
+    for i, tpl in enumerate(st.session_state['market_templates']):
+        st.code(json.dumps(tpl['json'], ensure_ascii=False, indent=2), language='json')
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button(f"收藏", key=f"fav_market_{i}"):
+                tpl['fav'] = not tpl['fav']
+                st.experimental_rerun()
+        with col2:
+            if st.button(f"评分+1", key=f"score_market_{i}"):
+                tpl['score'] += 1
+                st.experimental_rerun()
+        st.markdown(f"收藏: {'⭐' if tpl['fav'] else '☆'} | 评分: {tpl['score']}")
     st.download_button("下载示例模板", data=json.dumps({"@context": "https://schema.org", "@type": "Product", "name": "示例商品"}, ensure_ascii=False, indent=2), file_name="product_template.json")
 
 # 预留：结构化数据解析、诊断、多类型合并等功能
