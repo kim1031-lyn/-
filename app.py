@@ -93,32 +93,42 @@ with tabs[1]:
         return s
     json_part = auto_extract_json(input_code)
     if st.button("解析并诊断", key="parse_btn"):
+        def display_structured_data_block(item, idx=None, level=0):
+            prefix = "  " * level
+            if isinstance(item, dict):
+                if idx is not None:
+                    st.markdown(f"{prefix}---\n**第{idx+1}个结构化数据块：**")
+                st.markdown(f"{prefix}- @context: {item.get('@context', '无')}")
+                st.markdown(f"{prefix}- @type: {item.get('@type', '无')}")
+                for k, v in item.items():
+                    if k not in ["@context", "@type"]:
+                        st.markdown(f"{prefix}  - `{k}`: {v}")
+            elif isinstance(item, list):
+                if idx is not None:
+                    st.markdown(f"{prefix}---\n**第{idx+1}个结构化数据块（嵌套数组）:**")
+                for sub_idx, sub_item in enumerate(item):
+                    display_structured_data_block(sub_item, sub_idx, level+1)
+            else:
+                st.markdown(f"{prefix}- [无法识别的数据类型]: {item}")
+
         try:
             parsed = json.loads(json_part)
             formatted = json.dumps(parsed, ensure_ascii=False, indent=2)
             st.success("格式化结果：")
             st.code(formatted, language='json')
-            st.markdown(f"**@context**: {parsed.get('@context', '无') if isinstance(parsed, dict) else '数组类型'}")
-            st.markdown(f"**@type**: {parsed.get('@type', '无') if isinstance(parsed, dict) else '数组类型'}")
-            st.markdown("**主要属性：**")
+            st.markdown("**主要属性结构化展示：**")
             if isinstance(parsed, dict):
-                for k, v in parsed.items():
-                    if k not in ["@context", "@type"]:
-                        st.markdown(f"- `{k}`: {v}")
+                display_structured_data_block(parsed)
             elif isinstance(parsed, list):
                 for idx, item in enumerate(parsed):
-                    st.markdown(f"---\n**第{idx+1}个结构化数据块：**")
-                    st.markdown(f"- @context: {item.get('@context', '无')}")
-                    st.markdown(f"- @type: {item.get('@type', '无')}")
-                    for k, v in item.items():
-                        if k not in ["@context", "@type"]:
-                            st.markdown(f"  - `{k}`: {v}")
+                    display_structured_data_block(item, idx)
             tips = []
             if isinstance(parsed, dict):
                 tips = seo_check(parsed)
             elif isinstance(parsed, list):
                 for item in parsed:
-                    tips.extend(seo_check(item))
+                    if isinstance(item, dict):
+                        tips.extend(seo_check(item))
             if tips:
                 for tip in tips:
                     st.warning(tip)
