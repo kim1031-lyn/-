@@ -159,7 +159,7 @@ with tabs[1]:
             prefix = "&nbsp;&nbsp;" * level
             if isinstance(item, dict):
                 type_name = item.get('@type', '未知')
-                st.markdown(f"{prefix}### 第{global_idx}个结构化数据块：{type_name}", unsafe_allow_html=True)
+                st.markdown(f"{prefix}### 第[{global_idx[0]}]个结构化数据块：{type_name}", unsafe_allow_html=True)
                 st.info(f"{prefix}**类型说明：** {get_type_brief(type_name)}", icon="ℹ️")
                 required = get_required_fields(type_name)
                 missing = [f for f in required if f not in item]
@@ -185,9 +185,18 @@ with tabs[1]:
                             if 'acceptedAnswer' not in q:
                                 st.warning(f"{prefix}FAQ每个问题建议包含acceptedAnswer字段。", icon="⚠️")
             elif isinstance(item, list):
-                for sub_item in item:
-                    global_idx[0] += 1
-                    diagnose_item(sub_item, global_idx, level+1)
+                if len(item) == 0:
+                    st.info(f"{prefix}嵌套结构化数据数组（空数组）", icon="❓")
+                else:
+                    st.info(f"{prefix}嵌套结构化数据数组（共{len(item)}项）", icon="📦")
+                    for sub_item in item:
+                        if isinstance(sub_item, dict):
+                            global_idx[0] += 1
+                            diagnose_item(sub_item, global_idx, level+1)
+                        elif isinstance(sub_item, list):
+                            diagnose_item(sub_item, global_idx, level+1)
+                        else:
+                            st.info(f"{prefix}无法识别的数据类型: {sub_item}", icon="❓")
             else:
                 st.info(f"{prefix}无法识别的数据类型: {item}", icon="❓")
         try:
@@ -195,8 +204,13 @@ with tabs[1]:
             items = parsed if isinstance(parsed, list) else [parsed]
             global_idx = [0]
             for item in items:
-                global_idx[0] += 1
-                diagnose_item(item, global_idx, 0)
+                if isinstance(item, dict):
+                    global_idx[0] += 1
+                    diagnose_item(item, global_idx, 0)
+                elif isinstance(item, list):
+                    diagnose_item(item, global_idx, 0)
+                else:
+                    st.info(f"无法识别的数据类型: {item}", icon="❓")
             st.success("诊断与分析完成。如需更详细建议，请参考schema.org官方文档或Google Search Gallery。")
         except Exception as e:
             st.error(f"解析失败：{e}")
