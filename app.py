@@ -103,9 +103,15 @@ with tabs[1]:
                         st.markdown(f"{prefix}- **{k}**: {v}", unsafe_allow_html=True)
                 for k, v in item.items():
                     if k not in ["@context", "@type"]:
-                        if isinstance(v, dict) or isinstance(v, list):
+                        if isinstance(v, dict) or (isinstance(v, list) and v and isinstance(v[0], dict)):
                             st.markdown(f"{prefix}- **{k}**:", unsafe_allow_html=True)
                             display_structured_data_block(v, None, level+1)
+                        elif isinstance(v, list) and (not v or isinstance(v[0], str)):
+                            st.markdown(f"{prefix}- **{k}**:", unsafe_allow_html=True)
+                            st.markdown(f"{prefix}<ul>", unsafe_allow_html=True)
+                            for s in v:
+                                st.markdown(f"{prefix}<li>{s}</li>", unsafe_allow_html=True)
+                            st.markdown(f"{prefix}</ul>", unsafe_allow_html=True)
                         else:
                             st.markdown(f"{prefix}- **{k}**: {v}", unsafe_allow_html=True)
             elif isinstance(item, list):
@@ -114,7 +120,19 @@ with tabs[1]:
                 for sub_idx, sub_item in enumerate(item):
                     display_structured_data_block(sub_item, sub_idx, level+1)
             else:
-                st.markdown(f"{prefix}- [无法识别的数据类型]: {item}", unsafe_allow_html=True)
+                st.markdown(f"{prefix}- {item}", unsafe_allow_html=True)
+
+        def get_field_comment(field):
+            comments = {
+                '@context': '指定schema.org上下文，建议为https://schema.org',
+                '@type': '指定结构化数据类型，如Product、Organization等',
+                'name': '结构化数据的名称',
+                'offers': '产品的报价信息',
+                'mainEntity': 'FAQ或HowTo等的主要实体',
+                'sameAs': '社交媒体或相关页面链接',
+                # 可扩展更多字段注释
+            }
+            return comments.get(field, '')
 
         try:
             parsed = json.loads(json_part)
@@ -136,9 +154,12 @@ with tabs[1]:
                         tips.extend(seo_check(item))
             if tips:
                 for tip in tips:
-                    st.warning(tip)
+                    # 诊断建议配合注释说明
+                    field = tip.split(':')[1].strip() if ':' in tip else tip
+                    comment = get_field_comment(field)
+                    st.warning(f"{tip}  {comment}")
             else:
-                st.info("未发现明显SEO必填项缺失。")
+                st.info("未发现明显SEO必填项缺失。\n建议参考schema.org文档补充更多推荐字段。")
         except Exception as e:
             st.error(f"解析失败：{e}")
 
