@@ -83,83 +83,51 @@ with tabs[0]:
 
 # Tab2: 解析/诊断
 with tabs[1]:
-    st.header("结构化数据解析与诊断")
-    st.markdown("粘贴已有的<script type=\"application/ld+json\">代码或纯JSON，自动格式化并结构化展示。")
+    st.header("结构化数据诊断与SEO分析")
+    st.markdown("粘贴完整<script>或JSON，获得专业SEO建议和诊断。")
     input_code = st.text_area("粘贴代码", height=250, key="parse_input")
-    # 自动识别并提取JSON
     def auto_extract_json(s):
         if '<script' in s:
             return extract_json_from_script(s)
         return s
     json_part = auto_extract_json(input_code)
-    if st.button("解析并诊断", key="parse_btn"):
-        def display_structured_data_block(item, idx=None, level=0):
-            prefix = "&nbsp;&nbsp;" * level
-            if isinstance(item, dict):
-                if idx is not None:
-                    st.markdown(f"{prefix}---\n**第{idx+1}个结构化数据块：**", unsafe_allow_html=True)
-                for k, v in item.items():
-                    if k in ["@context", "@type"]:
-                        st.markdown(f"{prefix}- **{k}**: {v}", unsafe_allow_html=True)
-                for k, v in item.items():
-                    if k not in ["@context", "@type"]:
-                        if isinstance(v, dict) or (isinstance(v, list) and v and isinstance(v[0], dict)):
-                            st.markdown(f"{prefix}- **{k}**:", unsafe_allow_html=True)
-                            display_structured_data_block(v, None, level+1)
-                        elif isinstance(v, list) and (not v or isinstance(v[0], str)):
-                            st.markdown(f"{prefix}- **{k}**:", unsafe_allow_html=True)
-                            st.markdown(f"{prefix}<ul>", unsafe_allow_html=True)
-                            for s in v:
-                                st.markdown(f"{prefix}<li>{s}</li>", unsafe_allow_html=True)
-                            st.markdown(f"{prefix}</ul>", unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"{prefix}- **{k}**: {v}", unsafe_allow_html=True)
-            elif isinstance(item, list):
-                if idx is not None:
-                    st.markdown(f"{prefix}---\n**第{idx+1}个结构化数据块（嵌套数组）:**", unsafe_allow_html=True)
-                for sub_idx, sub_item in enumerate(item):
-                    display_structured_data_block(sub_item, sub_idx, level+1)
-            else:
-                st.markdown(f"{prefix}- {item}", unsafe_allow_html=True)
-
-        def get_field_comment(field):
-            comments = {
-                '@context': '指定schema.org上下文，建议为https://schema.org',
-                '@type': '指定结构化数据类型，如Product、Organization等',
-                'name': '结构化数据的名称',
-                'offers': '产品的报价信息',
-                'mainEntity': 'FAQ或HowTo等的主要实体',
-                'sameAs': '社交媒体或相关页面链接',
-                # 可扩展更多字段注释
-            }
-            return comments.get(field, '')
-
+    if st.button("诊断分析", key="parse_btn"):
         try:
             parsed = json.loads(json_part)
-            formatted = json.dumps(parsed, ensure_ascii=False, indent=2)
-            st.success("格式化结果：")
-            st.code(formatted, language='json')
-            st.markdown("**主要属性结构化展示：**")
-            if isinstance(parsed, dict):
-                display_structured_data_block(parsed)
-            elif isinstance(parsed, list):
-                for idx, item in enumerate(parsed):
-                    display_structured_data_block(item, idx)
-            tips = []
-            if isinstance(parsed, dict):
-                tips = seo_check(parsed)
-            elif isinstance(parsed, list):
-                for item in parsed:
-                    if isinstance(item, dict):
-                        tips.extend(seo_check(item))
-            if tips:
-                for tip in tips:
-                    # 诊断建议配合注释说明
-                    field = tip.split(':')[1].strip() if ':' in tip else tip
-                    comment = get_field_comment(field)
-                    st.warning(f"{tip}  {comment}")
-            else:
-                st.info("未发现明显SEO必填项缺失。\n建议参考schema.org文档补充更多推荐字段。")
+            # 支持数组和单对象
+            items = parsed if isinstance(parsed, list) else [parsed]
+            for idx, item in enumerate(items):
+                type_name = item.get('@type', '未知')
+                st.markdown(f"### 第{idx+1}个结构化数据块：{type_name}")
+                # 类型简述
+                st.info(f"**类型说明：** {get_type_brief(type_name)}")
+                # 必填字段检查
+                required = get_required_fields(type_name)
+                missing = [f for f in required if f not in item]
+                if missing:
+                    st.warning(f"缺失必填字段：{', '.join(missing)}。请补充以保证结构化数据被正确识别。")
+                else:
+                    st.success("所有必填字段均已填写。")
+                # 推荐字段建议
+                recommended = get_recommended_fields(type_name)
+                rec_missing = [f for f in recommended if f not in item]
+                if rec_missing:
+                    st.info(f"建议补充推荐字段：{', '.join(rec_missing)}，有助于提升SEO效果和富摘要丰富度。")
+                # Google富摘要支持
+                st.info(f"**Google富摘要支持：** {get_google_rich_snippet_support(type_name)}")
+                # 其他专业建议（举例）
+                if type_name == 'Product':
+                    if 'offers' in item and isinstance(item['offers'], dict):
+                        if 'price' not in item['offers']:
+                            st.warning("Product的offers建议包含price字段，利于价格富摘要展示。")
+                    if 'image' not in item:
+                        st.info("建议为Product补充image字段，提升商品吸引力。")
+                if type_name == 'FAQPage':
+                    if 'mainEntity' in item and isinstance(item['mainEntity'], list):
+                        for q in item['mainEntity']:
+                            if 'acceptedAnswer' not in q:
+                                st.warning("FAQ每个问题建议包含acceptedAnswer字段。")
+            st.success("诊断与分析完成。如需更详细建议，请参考schema.org官方文档或Google Search Gallery。")
         except Exception as e:
             st.error(f"解析失败：{e}")
 
@@ -177,3 +145,64 @@ with tabs[2]:
 
 # 预留：结构化数据解析、诊断、多类型合并等功能
 # ... 
+
+def get_type_brief(type_name):
+    briefs = {
+        'Organization': '用于描述公司、机构等，有助于品牌知识面板展示。',
+        'LocalBusiness': '本地企业，适合有实体门店的商家，可提升本地搜索曝光。',
+        'Product': '产品信息，支持价格、库存、评论等，利于获得商品富摘要。',
+        'BreadcrumbList': '面包屑导航，提升页面结构清晰度，有助于收录。',
+        'NewsArticle': '新闻/博客文章，利于获得Top Stories等富摘要。',
+        'Event': '活动信息，支持时间、地点等，利于活动富摘要。',
+        'FAQPage': '常见问答，利于FAQ富摘要展示。',
+        'HowTo': '操作指南，利于HowTo富摘要展示。',
+        'JobPosting': '职位招聘，支持职位富摘要。',
+        'ImageObject': '图片元数据，提升图片搜索表现。',
+        'VideoObject': '视频元数据，提升视频搜索表现。',
+        'SoftwareApplication': '软件应用，支持应用富摘要。',
+        'WebApplication': 'Web应用，支持应用富摘要。',
+        'WebSite': '网站主页，支持站内搜索等功能。',
+    }
+    return briefs.get(type_name, '结构化数据类型，提升搜索引擎理解和富摘要机会。')
+
+def get_required_fields(type_name):
+    # 仅举例，实际可扩展更全
+    required = {
+        'Organization': ['@context', '@type', 'name'],
+        'Product': ['@context', '@type', 'name', 'offers'],
+        'FAQPage': ['@context', '@type', 'mainEntity'],
+        'BreadcrumbList': ['@context', '@type', 'itemListElement'],
+        'NewsArticle': ['@context', '@type', 'headline', 'datePublished', 'author'],
+        'Event': ['@context', '@type', 'name', 'startDate', 'location'],
+        'HowTo': ['@context', '@type', 'name', 'step'],
+        'JobPosting': ['@context', '@type', 'title', 'description', 'datePosted', 'hiringOrganization'],
+    }
+    return required.get(type_name, ['@context', '@type'])
+
+def get_recommended_fields(type_name):
+    recommended = {
+        'Organization': ['url', 'logo', 'contactPoint', 'sameAs'],
+        'Product': ['image', 'description', 'brand', 'review'],
+        'FAQPage': [],
+        'BreadcrumbList': [],
+        'NewsArticle': ['image', 'dateModified'],
+        'Event': ['description', 'image'],
+        'HowTo': ['image', 'description'],
+        'JobPosting': ['employmentType', 'jobLocation'],
+    }
+    return recommended.get(type_name, [])
+
+def get_google_rich_snippet_support(type_name):
+    support = {
+        'Organization': '支持品牌知识面板（Brand Panel）',
+        'Product': '支持商品富摘要（Product Rich Result）',
+        'FAQPage': '支持FAQ富摘要（FAQ Rich Result）',
+        'BreadcrumbList': '支持面包屑富摘要（Breadcrumb Rich Result）',
+        'NewsArticle': '支持Top Stories等新闻富摘要',
+        'Event': '支持活动富摘要（Event Rich Result）',
+        'HowTo': '支持HowTo富摘要（HowTo Rich Result）',
+        'JobPosting': '支持职位富摘要（Job Posting Rich Result）',
+    }
+    return support.get(type_name, '无特殊富摘要，但有助于SEO结构化。')
+
+# ... existing code ... 
