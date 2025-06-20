@@ -110,6 +110,119 @@ tabs = st.tabs(["生成/编辑", "解析/诊断", "外部资源"])
 templates = load_templates()
 type_list = list(templates.keys())
 
+# 注入全局自定义CSS
+st.markdown('''
+<style>
+body, .stApp {
+    background-color: #F5E9DA !important;
+    font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    color: #4E3B31;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #4E3B31 !important;
+    font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.stTabs [data-baseweb="tab-list"] {
+    background: #FFF8F0;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 2px 8px #E0C9A6;
+    padding: 0.5rem 1rem;
+}
+
+.stTabs [data-baseweb="tab"] {
+    color: #A67C52 !important;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border-radius: 12px 12px 0 0;
+    margin-right: 8px;
+}
+
+.stTabs [aria-selected="true"] {
+    background: #F3E7D9 !important;
+    color: #4E3B31 !important;
+    box-shadow: 0 2px 8px #E0C9A6;
+}
+
+.stButton > button {
+    background: linear-gradient(90deg, #D7B899 60%, #A67C52 100%);
+    color: #fff;
+    border: none;
+    border-radius: 16px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 8px #E0C9A6;
+    padding: 0.5rem 1.5rem;
+    margin: 0.5rem 0;
+    transition: background 0.2s, box-shadow 0.2s;
+}
+.stButton > button:hover {
+    background: linear-gradient(90deg, #A67C52 60%, #D7B899 100%);
+    box-shadow: 0 4px 16px #D7B899;
+}
+
+.stTextArea textarea, .stTextInput input {
+    background: #FFF8F0 !important;
+    color: #4E3B31 !important;
+    border-radius: 12px !important;
+    border: 1.5px solid #E0C9A6 !important;
+    font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 1.05rem;
+    box-shadow: 0 2px 8px #E0C9A6;
+}
+
+.stCode, .stMarkdown code {
+    background: #F3E7D9 !important;
+    color: #4E3B31 !important;
+    border-radius: 12px !important;
+    font-family: 'Fira Mono', 'Consolas', 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 1.02rem;
+    box-shadow: 0 2px 8px #E0C9A6;
+}
+
+/* 卡片式分区 */
+.block-card {
+    background: #FFF8F0;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px #E0C9A6;
+    padding: 2rem 2.5rem 1.5rem 2.5rem;
+    margin-bottom: 2rem;
+}
+
+/* 诊断卡片 */
+.diagnose-card {
+    background: #F3E7D9;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px #E0C9A6;
+    padding: 1.2rem 1.5rem 1rem 1.5rem;
+    margin-bottom: 1.2rem;
+    color: #4E3B31;
+}
+
+/* 分隔线 */
+hr {
+    border: 0;
+    border-top: 1.5px dashed #E0C9A6;
+    margin: 1.2rem 0;
+}
+
+/* 主要内容区居中 */
+.main-center {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* 诊断区嵌套缩进 */
+.diagnose-indent {
+    margin-left: 2.2em;
+}
+
+</style>
+''', unsafe_allow_html=True)
+
 # Tab1: 生成/编辑
 with tabs[0]:
     st.header("结构化数据生成与编辑")
