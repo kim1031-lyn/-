@@ -261,7 +261,6 @@ with st.sidebar:
     # 快捷操作
     st.markdown("#### 快捷操作")
     if st.button("一键复制全部代码", use_container_width=True):
-        # 复制当前生成/编辑区代码
         code = st.session_state.get('last_generated_code', '')
         if code:
             st.code(code, language='html')
@@ -270,7 +269,7 @@ with st.sidebar:
             st.toast("暂无可复制内容！", icon="⚠️")
     if st.button("清空/重置", use_container_width=True):
         st.session_state['editor_content'] = {}
-        st.toast("已重置编辑区！", icon="✅")
+        st.session_state['selected_types'] = []
         st.experimental_rerun()
     uploaded = st.file_uploader("导入JSON", type=['json'], label_visibility='collapsed')
     if uploaded:
@@ -296,13 +295,11 @@ with st.sidebar:
         for i, h in enumerate(st.session_state['history'][-5:][::-1]):
             if st.button(f"恢复历史[{i+1}]", key=f"history_{i}", use_container_width=True):
                 st.session_state['editor_content'] = h
-                st.toast("已恢复历史记录！", icon="✅")
                 st.experimental_rerun()
     if st.session_state['favorites']:
         for i, f in enumerate(st.session_state['favorites'][-5:][::-1]):
             if st.button(f"恢复收藏[{i+1}]", key=f"fav_{i}", use_container_width=True):
                 st.session_state['editor_content'] = f
-                st.toast("已恢复收藏！", icon="✅")
                 st.experimental_rerun()
 
     st.markdown("---")
@@ -363,16 +360,28 @@ with st.sidebar:
 
 st.set_page_config(page_title="结构化数据工具", layout="wide")
 st.title("结构化数据生成与解析工具")
-tabs = st.tabs(["生成/编辑", "解析/诊断", "外部资源"])
 
-# 读取模板
+# 主内容区Tab联动
+cur_tab = st.session_state.get('tab_idx', 0)
+tabs = st.tabs(["生成/编辑", "解析/诊断", "外部资源", "SEO报告/分析"])
+
+# 类型快速搜索联动
 templates = load_templates()
 type_list = list(templates.keys())
+search_kw = st.session_state.get('search_type', '').strip().lower()
+if search_kw:
+    filtered_types = [t for t in type_list if search_kw in t.lower()]
+else:
+    filtered_types = type_list
 
-# Tab1: 生成/编辑
+# 生成/编辑Tab
 with tabs[0]:
     st.header("结构化数据生成与编辑")
-    selected_types = st.multiselect("选择结构化数据类型（可多选）", type_list, default=[type_list[0]])
+    # 多类型选择联动
+    if 'selected_types' not in st.session_state:
+        st.session_state['selected_types'] = [filtered_types[0]] if filtered_types else []
+    selected_types = st.multiselect("选择结构化数据类型（可多选）", filtered_types, default=st.session_state['selected_types'])
+    st.session_state['selected_types'] = selected_types
     # 合并所有选中类型的JSON为一个数组
     json_array = []
     for t in selected_types:
@@ -383,11 +392,13 @@ with tabs[0]:
             json_array.append(parsed)
         except Exception:
             pass
-    # 生成初始完整<script>代码
     formatted_array = json.dumps(json_array, ensure_ascii=False, indent=2)
     script_block = f'<script type="application/ld+json">\n{formatted_array}\n</script>'
-    st.subheader("可编辑集成版结构化数据代码（含<script>标签）")
-    user_script = st.text_area("请直接编辑下方完整代码，包括<script>标签", value=script_block, height=400)
+    # 编辑区内容联动
+    if not st.session_state['editor_content']:
+        st.session_state['editor_content'] = script_block
+    user_script = st.text_area("请直接编辑下方完整代码，包括<script>标签", value=st.session_state['editor_content'], height=400, key="main_editor")
+    st.session_state['editor_content'] = user_script
     # 自动提取JSON部分并校验
     def extract_json_from_full_script(s):
         lines = s.strip().splitlines()
@@ -399,6 +410,14 @@ with tabs[0]:
         formatted = json.dumps(parsed, ensure_ascii=False, indent=2)
         st.success("格式正确！最终可用代码如下：")
         st.code(f'<script type="application/ld+json">\n{formatted}\n</script>', language='html')
+        st.session_state['last_generated_code'] = f'<script type="application/ld+json">\n{formatted}\n</script>'
+        # 写入历史记录
+        if st.button("保存到历史记录", key="save_history"):
+            st.session_state['history'].append(user_script)
+            st.toast("已保存到历史记录！", icon="📜")
+        if st.button("收藏当前结构化数据", key="save_fav"):
+            st.session_state['favorites'].append(user_script)
+            st.toast("已收藏！", icon="⭐")
     except Exception as e:
         st.error(f"JSON格式有误，请检查：{e}")
         st.code(user_script, language='html')
