@@ -4,6 +4,8 @@ import os
 from typing import List
 import base64
 
+st.set_page_config(page_title="结构化数据工具", layout="wide")
+
 # 加载模板库
 def load_templates():
     path = 'templates/structured_data_templates.json'
@@ -358,7 +360,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-st.set_page_config(page_title="结构化数据工具", layout="wide")
 st.title("结构化数据生成与解析工具")
 
 # 主内容区Tab联动
