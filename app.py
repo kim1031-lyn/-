@@ -223,6 +223,87 @@ hr {
 </style>
 ''', unsafe_allow_html=True)
 
+# 侧边栏UI实现
+with st.sidebar:
+    st.markdown("""
+    <div style='text-align:center; margin-bottom:1.5rem;'>
+        <img src='https://img.icons8.com/color/96/000000/structural.png' style='width:60px; border-radius:16px; box-shadow:0 2px 8px #E0C9A6;'>
+        <div style='font-size:1.5rem; font-weight:900; color:#A67C52; margin-top:0.5rem; letter-spacing:2px;'>结构化数据工具</div>
+        <div style='font-size:1rem; color:#7C5C3B; margin-top:0.2rem;'>让SEO结构化更简单</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class='block-card' style='padding:1.2rem 1.2rem 0.7rem 1.2rem;'>
+        <div style='font-size:1.1rem; font-weight:700; color:#A67C52; margin-bottom:0.7rem;'>主功能导航</div>
+        <ul style='list-style:none; padding-left:0;'>
+            <li style='margin-bottom:0.5rem;'><span style='font-size:1.2rem;'>🏠</span> 生成/编辑</li>
+            <li style='margin-bottom:0.5rem;'><span style='font-size:1.2rem;'>🧩</span> 解析/诊断</li>
+            <li style='margin-bottom:0.5rem;'><span style='font-size:1.2rem;'>🌐</span> 外部资源</li>
+            <li style='margin-bottom:0.5rem;'><span style='font-size:1.2rem;'>📊</span> SEO报告/分析</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class='block-card' style='padding:1.1rem 1.2rem 0.7rem 1.2rem;'>
+        <div style='font-size:1.1rem; font-weight:700; color:#A67C52; margin-bottom:0.7rem;'>快捷操作</div>
+        <button style='width:100%;margin-bottom:0.5rem;background:#D7B899;color:#fff;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>一键复制全部代码</button>
+        <button style='width:100%;margin-bottom:0.5rem;background:#A67C52;color:#fff;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>清空/重置</button>
+        <button style='width:100%;margin-bottom:0.5rem;background:#E9D8C3;color:#4E3B31;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>导入/导出</button>
+        <button style='width:100%;margin-bottom:0.5rem;background:#FFF8F0;color:#A67C52;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>历史记录/收藏夹</button>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class='block-card' style='padding:1.1rem 1.2rem 0.7rem 1.2rem;'>
+        <div style='font-size:1.1rem; font-weight:700; color:#A67C52; margin-bottom:0.7rem;'>智能与个性化</div>
+        <input type='text' placeholder='类型快速搜索...' style='width:100%;border-radius:10px;border:1.5px solid #E0C9A6;padding:0.4rem 0.7rem;margin-bottom:0.5rem;font-size:1rem;'>
+        <button style='width:100%;margin-bottom:0.5rem;background:#A67C52;color:#fff;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>AI一键补全</button>
+        <div style='background:#F3E7D9;border-radius:10px;padding:0.5rem 0.7rem;margin-bottom:0.5rem;color:#7C5C3B;font-size:0.98rem;'>SEO小贴士：结构化数据可提升富摘要展现率，建议定期校验！</div>
+        <button style='width:100%;margin-bottom:0.5rem;background:#E9D8C3;color:#4E3B31;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>主题切换</button>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class='block-card' style='padding:1.1rem 1.2rem 0.7rem 1.2rem;'>
+        <div style='font-size:1.1rem; font-weight:700; color:#A67C52; margin-bottom:0.7rem;'>协作与服务</div>
+        <button style='width:100%;margin-bottom:0.5rem;background:#A67C52;color:#fff;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>团队协作/分享</button>
+        <button style='width:100%;margin-bottom:0.5rem;background:#FFF8F0;color:#A67C52;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>反馈/建议</button>
+        <button style='width:100%;margin-bottom:0.5rem;background:#E9D8C3;color:#4E3B31;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>帮助/文档</button>
+        <button style='width:100%;margin-bottom:0.5rem;background:#FFF8F0;color:#A67C52;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>联系我们</button>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class='block-card' style='padding:1.1rem 1.2rem 0.7rem 1.2rem;'>
+        <div style='font-size:1.1rem; font-weight:700; color:#A67C52; margin-bottom:0.7rem;'>🚀 高级功能（可扩展）</div>
+        <ul style='list-style:disc inside; color:#7C5C3B; font-size:1rem;'>
+            <li>批量校验/批量生成结构化数据</li>
+            <li>富摘要模拟预览</li>
+            <li>结构化数据对比/差异分析</li>
+            <li>多语言支持/国际化</li>
+            <li>API接口/自动化集成</li>
+            <li>用户登录/个性化/云端存储</li>
+            <li>数据可视化与SEO趋势分析</li>
+            <li>SEO富摘要监控与推送</li>
+            <li>团队协作/权限管理</li>
+            <li>结构化数据知识库/案例库</li>
+            <li>AI智能诊断报告/一键导出</li>
+            <li>Schema.org标准自动更新</li>
+            <li>内容与结构一体化编辑</li>
+            <li>行业模板市场/社区生态</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style='text-align:center; color:#A67C52; font-size:0.98rem; margin-top:2rem;'>
+        <div>© 2024 结构化数据工具</div>
+        <div style='color:#7C5C3B;'>v1.0.0 | 由AI驱动</div>
+    </div>
+    """, unsafe_allow_html=True)
+
 # Tab1: 生成/编辑
 with tabs[0]:
     st.header("结构化数据生成与编辑")
