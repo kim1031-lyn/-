@@ -520,21 +520,12 @@ with tabs[3]:
     content = st.text_area("网页内容编辑区", height=120, key="content_edit")
     if st.button("同步生成结构化数据", key="sync_structured"):
         try:
-            import openai
-            openai.api_key = os.getenv("OPENAI_API_KEY", "")
-            if openai.api_key:
-                prompt = f"请为以下网页内容生成schema.org结构化数据JSON-LD：\n{content}"
-                resp = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.2,
-                    max_tokens=512
-                )
-                result = resp.choices[0].message.content
-                st.code(result, language='json')
+            # 移除了OpenAI调用，始终使用基于规则的简单生成
+            if content:
+                st.info("已移除AI生成功能。将根据内容生成基础的Article结构化数据。")
+                st.code(json.dumps({"@context": "https://schema.org", "@type": "Article", "text": content}, ensure_ascii=False, indent=2), language='json')
             else:
-                # 无API Key时用规则生成
-                st.code(json.dumps({"@context": "https://schema.org", "@type": "Article", "text": content[:30]}, ensure_ascii=False, indent=2), language='json')
+                st.warning("请输入内容以生成结构化数据。")
         except Exception as e:
             st.error(f"生成失败：{e}")
     st.markdown("---")
@@ -566,4 +557,4 @@ with tabs[3]:
     st.download_button("下载示例模板", data=json.dumps({"@context": "https://schema.org", "@type": "Product", "name": "示例商品"}, ensure_ascii=False, indent=2), file_name="product_template.json")
 
 # 预留：结构化数据解析、诊断、多类型合并等功能
-# ... 
+# ...

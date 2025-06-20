@@ -1,2 +1,5 @@
 streamlit==1.34.0
-Pygments==2.17.2 
+Pygments==2.17.2
+deepdiff
+requests
+beautifulsoup4
