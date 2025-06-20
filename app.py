@@ -155,11 +155,11 @@ with tabs[1]:
         return s
     json_part = auto_extract_json(input_code)
     if st.button("诊断分析", key="parse_btn"):
-        def diagnose_item(item, idx=None, level=0):
+        def diagnose_item(item, global_idx, level=0):
             prefix = "&nbsp;&nbsp;" * level
             if isinstance(item, dict):
                 type_name = item.get('@type', '未知')
-                st.markdown(f"{prefix}### 第{idx+1 if idx is not None else ''}个结构化数据块：{type_name}", unsafe_allow_html=True)
+                st.markdown(f"{prefix}### 第{global_idx}个结构化数据块：{type_name}", unsafe_allow_html=True)
                 st.info(f"{prefix}**类型说明：** {get_type_brief(type_name)}", icon="ℹ️")
                 required = get_required_fields(type_name)
                 missing = [f for f in required if f not in item]
@@ -185,15 +185,18 @@ with tabs[1]:
                             if 'acceptedAnswer' not in q:
                                 st.warning(f"{prefix}FAQ每个问题建议包含acceptedAnswer字段。", icon="⚠️")
             elif isinstance(item, list):
-                for sub_idx, sub_item in enumerate(item):
-                    diagnose_item(sub_item, sub_idx, level+1)
+                for sub_item in item:
+                    global_idx[0] += 1
+                    diagnose_item(sub_item, global_idx, level+1)
             else:
                 st.info(f"{prefix}无法识别的数据类型: {item}", icon="❓")
         try:
             parsed = json.loads(json_part)
             items = parsed if isinstance(parsed, list) else [parsed]
-            for idx, item in enumerate(items):
-                diagnose_item(item, idx)
+            global_idx = [0]
+            for item in items:
+                global_idx[0] += 1
+                diagnose_item(item, global_idx, 0)
             st.success("诊断与分析完成。如需更详细建议，请参考schema.org官方文档或Google Search Gallery。")
         except Exception as e:
             st.error(f"解析失败：{e}")
