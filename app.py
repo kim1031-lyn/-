@@ -39,9 +39,11 @@ st.subheader(f"{type_selected} 可编辑JSON-LD代码")
 user_code = st.text_area("请编辑下方JSON-LD代码（仅编辑JSON部分，无需<script>标签）", value=json_code, height=350)
 
 # 自动格式化与校验
+json_valid = False
 try:
     parsed = json.loads(user_code)
     formatted_code = json.dumps(parsed, ensure_ascii=False, indent=2)
+    json_valid = True
     st.success("JSON格式正确！可直接复制下方代码到网页。")
     st.code(formatted_code, language='json')
 except Exception as e:
@@ -50,10 +52,12 @@ except Exception as e:
 
 # 生成完整<script>代码
 if st.button("生成完整<script>嵌入代码"):
-    if 'parsed' in locals():
+    if json_valid:
         script_block = f'<script type="application/ld+json">\n{formatted_code}\n</script>'
         st.code(script_block, language='html')
         st.success("已生成完整嵌入代码，可直接复制到网页！")
+    else:
+        st.error("JSON格式有误，无法生成嵌入代码。请先修正JSON格式。")
 
 # 预留：结构化数据解析、诊断、多类型合并等功能
 # ... 
