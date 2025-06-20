@@ -94,22 +94,27 @@ with tabs[1]:
     json_part = auto_extract_json(input_code)
     if st.button("解析并诊断", key="parse_btn"):
         def display_structured_data_block(item, idx=None, level=0):
-            prefix = "  " * level
+            prefix = "&nbsp;&nbsp;" * level
             if isinstance(item, dict):
                 if idx is not None:
-                    st.markdown(f"{prefix}---\n**第{idx+1}个结构化数据块：**")
-                st.markdown(f"{prefix}- @context: {item.get('@context', '无')}")
-                st.markdown(f"{prefix}- @type: {item.get('@type', '无')}")
+                    st.markdown(f"{prefix}---\n**第{idx+1}个结构化数据块：**", unsafe_allow_html=True)
+                for k, v in item.items():
+                    if k in ["@context", "@type"]:
+                        st.markdown(f"{prefix}- **{k}**: {v}", unsafe_allow_html=True)
                 for k, v in item.items():
                     if k not in ["@context", "@type"]:
-                        st.markdown(f"{prefix}  - `{k}`: {v}")
+                        if isinstance(v, dict) or isinstance(v, list):
+                            st.markdown(f"{prefix}- **{k}**:", unsafe_allow_html=True)
+                            display_structured_data_block(v, None, level+1)
+                        else:
+                            st.markdown(f"{prefix}- **{k}**: {v}", unsafe_allow_html=True)
             elif isinstance(item, list):
                 if idx is not None:
-                    st.markdown(f"{prefix}---\n**第{idx+1}个结构化数据块（嵌套数组）:**")
+                    st.markdown(f"{prefix}---\n**第{idx+1}个结构化数据块（嵌套数组）:**", unsafe_allow_html=True)
                 for sub_idx, sub_item in enumerate(item):
                     display_structured_data_block(sub_item, sub_idx, level+1)
             else:
-                st.markdown(f"{prefix}- [无法识别的数据类型]: {item}")
+                st.markdown(f"{prefix}- [无法识别的数据类型]: {item}", unsafe_allow_html=True)
 
         try:
             parsed = json.loads(json_part)
