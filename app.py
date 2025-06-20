@@ -251,8 +251,8 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     # 主功能导航
-    navs = ["生成/编辑", "解析/诊断", "外部资源", "SEO报告/分析"]
-    nav_icons = ["🏠", "🧩", "🌐", "📊"]
+    navs = ["生成/编辑", "解析/诊断", "外部资源"]
+    nav_icons = ["🏠", "🧩", "🌐"]
     for i, (nav, icon) in enumerate(zip(navs, nav_icons)):
         if st.button(f"{icon} {nav}", key=f"nav_{i}", use_container_width=True):
             st.session_state['tab_idx'] = i
@@ -260,75 +260,12 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # 快捷操作
-    st.markdown("#### 快捷操作")
-    if st.button("一键复制全部代码", use_container_width=True):
-        code = st.session_state.get('last_generated_code', '')
-        if code:
-            st.code(code, language='html')
-            st.toast("已复制到剪贴板！", icon="✅")
-        else:
-            st.toast("暂无可复制内容！", icon="⚠️")
-    if st.button("清空/重置", use_container_width=True):
-        st.session_state['editor_content'] = {}
-        st.session_state['selected_types'] = []
-        st.experimental_rerun()
-    uploaded = st.file_uploader("导入JSON", type=['json'], label_visibility='collapsed')
-    if uploaded:
-        try:
-            data = json.load(uploaded)
-            st.session_state['editor_content'] = data
-            st.toast("导入成功！", icon="✅")
-            st.experimental_rerun()
-        except Exception as e:
-            st.toast(f"导入失败: {e}", icon="⚠️")
-    if st.button("导出当前JSON", use_container_width=True):
-        content = st.session_state.get('editor_content', {})
-        b = json.dumps(content, ensure_ascii=False, indent=2).encode('utf-8')
-        b64 = base64.b64encode(b).decode()
-        href = f'<a href="data:application/json;base64,{b64}" download="structured_data.json">点击下载JSON文件</a>'
-        st.markdown(href, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # 历史记录/收藏夹
-    st.markdown("#### 历史记录/收藏夹")
-    if st.session_state['history']:
-        for i, h in enumerate(st.session_state['history'][-5:][::-1]):
-            if st.button(f"恢复历史[{i+1}]", key=f"history_{i}", use_container_width=True):
-                st.session_state['editor_content'] = h
-                st.experimental_rerun()
-    if st.session_state['favorites']:
-        for i, f in enumerate(st.session_state['favorites'][-5:][::-1]):
-            if st.button(f"恢复收藏[{i+1}]", key=f"fav_{i}", use_container_width=True):
-                st.session_state['editor_content'] = f
-                st.experimental_rerun()
-
-    st.markdown("---")
-
-    # 智能与个性化
-    st.markdown("#### 智能与个性化")
-    st.session_state['search_type'] = st.text_input("类型快速搜索", value=st.session_state['search_type'], placeholder="输入类型关键词...")
-    if st.button("AI一键补全", use_container_width=True):
-        st.toast("AI补全功能即将上线，敬请期待！", icon="🤖")
-    st.info("SEO小贴士：结构化数据可提升富摘要展现率，建议定期校验！", icon="💡")
-    theme = st.selectbox("主题切换", list(THEMES.keys()), index=list(THEMES.keys()).index(st.session_state['theme']))
+    # 主题切换
+    st.markdown("#### 主题切换")
+    theme = st.selectbox("选择主题", list(THEMES.keys()), index=list(THEMES.keys()).index(st.session_state['theme']))
     if theme != st.session_state['theme']:
         st.session_state['theme'] = theme
         st.experimental_rerun()
-
-    st.markdown("---")
-
-    # 协作与服务
-    st.markdown("#### 协作与服务")
-    if st.button("团队协作/分享", use_container_width=True):
-        st.toast("团队协作/分享功能即将上线！", icon="🤝")
-    if st.button("反馈/建议", use_container_width=True):
-        st.toast("反馈/建议功能即将上线！", icon="✉️")
-    if st.button("帮助/文档", use_container_width=True):
-        st.toast("帮助/文档功能即将上线！", icon="📖")
-    if st.button("联系我们", use_container_width=True):
-        st.toast("联系我们功能即将上线！", icon="☎️")
 
     st.markdown("---")
 
@@ -364,7 +301,7 @@ st.title("结构化数据生成与解析工具")
 
 # 主内容区Tab联动
 cur_tab = st.session_state.get('tab_idx', 0)
-tabs = st.tabs(["生成/编辑", "解析/诊断", "外部资源", "SEO报告/分析"])
+tabs = st.tabs(["生成/编辑", "解析/诊断", "外部资源"])
 
 # 类型快速搜索联动
 templates = load_templates()
