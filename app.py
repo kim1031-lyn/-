@@ -301,7 +301,7 @@ st.title("结构化数据生成与解析工具")
 
 # 主内容区Tab联动
 cur_tab = st.session_state.get('tab_idx', 0)
-tabs = st.tabs(["生成/编辑", "解析/诊断", "外部资源"])
+tabs = st.tabs(["生成/编辑", "解析/诊断", "外部资源", "高级功能"])
 
 # 类型快速搜索联动
 templates = load_templates()
@@ -445,6 +445,75 @@ with tabs[2]:
 - [Google 支持的结构化数据库 (Search Gallery)](https://developers.google.com/search/docs/appearance/structured-data/search-gallery?hl=zh-cn)
 - [Schema.org 官方文档 (字段释义)](https://schema.org/docs/documents.html)
     """)
+
+# 高级功能Tab
+with tabs[3]:
+    st.header("高级功能")
+    st.markdown("---")
+    # 1. 结构化数据对比/差异分析
+    st.subheader("结构化数据对比/差异分析")
+    col1, col2 = st.columns(2)
+    with col1:
+        data1 = st.text_area("结构化数据1 (JSON)", height=200, key="diff1")
+    with col2:
+        data2 = st.text_area("结构化数据2 (JSON)", height=200, key="diff2")
+    if st.button("对比并高亮差异", key="do_diff"):
+        try:
+            import difflib
+            d1 = json.dumps(json.loads(data1), ensure_ascii=False, indent=2).splitlines()
+            d2 = json.dumps(json.loads(data2), ensure_ascii=False, indent=2).splitlines()
+            diff = difflib.unified_diff(d1, d2, fromfile='数据1', tofile='数据2', lineterm='')
+            st.code('\n'.join(diff), language='diff')
+        except Exception as e:
+            st.error(f"对比失败：{e}")
+    st.markdown("---")
+    # 2. 数据可视化与SEO趋势分析
+    st.subheader("数据可视化与SEO趋势分析")
+    uploaded = st.file_uploader("上传结构化数据历史/SEO报告(JSON)", type=['json'], key="seo_trend")
+    if uploaded:
+        try:
+            import pandas as pd
+            import altair as alt
+            data = json.load(uploaded)
+            if isinstance(data, list):
+                df = pd.DataFrame(data)
+            else:
+                df = pd.DataFrame([data])
+            st.dataframe(df)
+            if 'date' in df.columns and 'rich_snippet' in df.columns:
+                chart = alt.Chart(df).mark_line(point=True).encode(
+                    x='date:T', y='rich_snippet:Q', tooltip=list(df.columns)
+                ).properties(title="富摘要获取趋势")
+                st.altair_chart(chart, use_container_width=True)
+        except Exception as e:
+            st.error(f"可视化失败：{e}")
+    st.markdown("---")
+    # 3. SEO富摘要监控与推送
+    st.subheader("SEO富摘要监控与推送")
+    url = st.text_input("输入网站URL进行富摘要监控", key="seo_monitor")
+    if st.button("检测富摘要", key="check_rich_snippet"):
+        st.info("（演示）已模拟检测，未来可对接Google/Bing API或爬虫自动抓取。")
+        st.write({"url": url, "rich_snippet_types": ["Product", "FAQPage"], "last_checked": "2024-05-01"})
+    st.markdown("---")
+    # 4. 结构化数据知识库/案例库
+    st.subheader("结构化数据知识库/案例库")
+    kb_query = st.text_input("搜索schema.org字段/案例", key="kb_query")
+    if st.button("搜索知识库", key="search_kb"):
+        st.info("（演示）可对接本地/云端知识库，支持关键词搜索、分类浏览、案例一键插入。")
+        st.write({"query": kb_query, "result": ["Product: 商品结构化数据案例", "FAQPage: FAQ结构化案例"]})
+    st.markdown("---")
+    # 5. 内容与结构一体化编辑
+    st.subheader("内容与结构一体化编辑")
+    content = st.text_area("网页内容编辑区", height=120, key="content_edit")
+    if st.button("同步生成结构化数据", key="sync_structured"):
+        st.info("（演示）可用AI/NLP自动抽取内容生成结构化数据。")
+        st.code(f'{{"@context": "https://schema.org", "@type": "Article", "text": "{content[:30]}..."}}', language='json')
+    st.markdown("---")
+    # 6. 行业模板市场/社区生态
+    st.subheader("行业模板市场/社区生态")
+    st.info("（演示）支持上传/下载行业模板，评分、评论、收藏，形成社区生态。")
+    st.file_uploader("上传行业结构化数据模板", type=['json'], key="market_upload")
+    st.download_button("下载示例模板", data=json.dumps({"@context": "https://schema.org", "@type": "Product", "name": "示例商品"}, ensure_ascii=False, indent=2), file_name="product_template.json")
 
 # 预留：结构化数据解析、诊断、多类型合并等功能
 # ... 
