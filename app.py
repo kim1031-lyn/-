@@ -39,6 +39,69 @@ def seo_check(parsed_json):
                 tips.append(f"Product类型建议包含字段: {f}")
     return tips
 
+def get_type_brief(type_name):
+    briefs = {
+        'Organization': '用于描述公司、机构等，有助于品牌知识面板展示。',
+        'Corporation': '用于描述公司、机构等，有助于品牌知识面板展示。',
+        'LocalBusiness': '本地企业，适合有实体门店的商家，可提升本地搜索曝光。',
+        'Product': '产品信息，支持价格、库存、评论等，利于获得商品富摘要。',
+        'BreadcrumbList': '面包屑导航，提升页面结构清晰度，有助于收录。',
+        'NewsArticle': '新闻/博客文章，利于获得Top Stories等富摘要。',
+        'Event': '活动信息，支持时间、地点等，利于活动富摘要。',
+        'FAQPage': '常见问答，利于FAQ富摘要展示。',
+        'HowTo': '操作指南，利于HowTo富摘要展示。',
+        'JobPosting': '职位招聘，支持职位富摘要。',
+        'ImageObject': '图片元数据，提升图片搜索表现。',
+        'VideoObject': '视频元数据，提升视频搜索表现。',
+        'SoftwareApplication': '软件应用，支持应用富摘要。',
+        'WebApplication': 'Web应用，支持应用富摘要。',
+        'WebSite': '网站主页，支持站内搜索等功能。',
+    }
+    return briefs.get(type_name, '结构化数据类型，提升搜索引擎理解和富摘要机会。')
+
+def get_required_fields(type_name):
+    # 仅举例，实际可扩展更全
+    required = {
+        'Organization': ['@context', '@type', 'name'],
+        'Corporation': ['@context', '@type', 'name'],
+        'Product': ['@context', '@type', 'name', 'offers'],
+        'FAQPage': ['@context', '@type', 'mainEntity'],
+        'BreadcrumbList': ['@context', '@type', 'itemListElement'],
+        'NewsArticle': ['@context', '@type', 'headline', 'datePublished', 'author'],
+        'Event': ['@context', '@type', 'name', 'startDate', 'location'],
+        'HowTo': ['@context', '@type', 'name', 'step'],
+        'JobPosting': ['@context', '@type', 'title', 'description', 'datePosted', 'hiringOrganization'],
+    }
+    return required.get(type_name, ['@context', '@type'])
+
+def get_recommended_fields(type_name):
+    recommended = {
+        'Organization': ['url', 'logo', 'contactPoint', 'sameAs'],
+        'Corporation': ['url', 'logo', 'contactPoint', 'sameAs'],
+        'Product': ['image', 'description', 'brand', 'review'],
+        'FAQPage': [],
+        'BreadcrumbList': [],
+        'NewsArticle': ['image', 'dateModified'],
+        'Event': ['description', 'image'],
+        'HowTo': ['image', 'description'],
+        'JobPosting': ['employmentType', 'jobLocation'],
+    }
+    return recommended.get(type_name, [])
+
+def get_google_rich_snippet_support(type_name):
+    support = {
+        'Organization': '支持品牌知识面板（Brand Panel）',
+        'Corporation': '支持品牌知识面板（Brand Panel）',
+        'Product': '支持商品富摘要（Product Rich Result）',
+        'FAQPage': '支持FAQ富摘要（FAQ Rich Result）',
+        'BreadcrumbList': '支持面包屑富摘要（Breadcrumb Rich Result）',
+        'NewsArticle': '支持Top Stories等新闻富摘要',
+        'Event': '支持活动富摘要（Event Rich Result）',
+        'HowTo': '支持HowTo富摘要（HowTo Rich Result）',
+        'JobPosting': '支持职位富摘要（Job Posting Rich Result）',
+    }
+    return support.get(type_name, '无特殊富摘要，但有助于SEO结构化。')
+
 st.set_page_config(page_title="结构化数据工具", layout="wide")
 st.title("结构化数据生成与解析工具")
 tabs = st.tabs(["生成/编辑", "解析/诊断", "外部资源"])
@@ -145,64 +208,3 @@ with tabs[2]:
 
 # 预留：结构化数据解析、诊断、多类型合并等功能
 # ... 
-
-def get_type_brief(type_name):
-    briefs = {
-        'Organization': '用于描述公司、机构等，有助于品牌知识面板展示。',
-        'LocalBusiness': '本地企业，适合有实体门店的商家，可提升本地搜索曝光。',
-        'Product': '产品信息，支持价格、库存、评论等，利于获得商品富摘要。',
-        'BreadcrumbList': '面包屑导航，提升页面结构清晰度，有助于收录。',
-        'NewsArticle': '新闻/博客文章，利于获得Top Stories等富摘要。',
-        'Event': '活动信息，支持时间、地点等，利于活动富摘要。',
-        'FAQPage': '常见问答，利于FAQ富摘要展示。',
-        'HowTo': '操作指南，利于HowTo富摘要展示。',
-        'JobPosting': '职位招聘，支持职位富摘要。',
-        'ImageObject': '图片元数据，提升图片搜索表现。',
-        'VideoObject': '视频元数据，提升视频搜索表现。',
-        'SoftwareApplication': '软件应用，支持应用富摘要。',
-        'WebApplication': 'Web应用，支持应用富摘要。',
-        'WebSite': '网站主页，支持站内搜索等功能。',
-    }
-    return briefs.get(type_name, '结构化数据类型，提升搜索引擎理解和富摘要机会。')
-
-def get_required_fields(type_name):
-    # 仅举例，实际可扩展更全
-    required = {
-        'Organization': ['@context', '@type', 'name'],
-        'Product': ['@context', '@type', 'name', 'offers'],
-        'FAQPage': ['@context', '@type', 'mainEntity'],
-        'BreadcrumbList': ['@context', '@type', 'itemListElement'],
-        'NewsArticle': ['@context', '@type', 'headline', 'datePublished', 'author'],
-        'Event': ['@context', '@type', 'name', 'startDate', 'location'],
-        'HowTo': ['@context', '@type', 'name', 'step'],
-        'JobPosting': ['@context', '@type', 'title', 'description', 'datePosted', 'hiringOrganization'],
-    }
-    return required.get(type_name, ['@context', '@type'])
-
-def get_recommended_fields(type_name):
-    recommended = {
-        'Organization': ['url', 'logo', 'contactPoint', 'sameAs'],
-        'Product': ['image', 'description', 'brand', 'review'],
-        'FAQPage': [],
-        'BreadcrumbList': [],
-        'NewsArticle': ['image', 'dateModified'],
-        'Event': ['description', 'image'],
-        'HowTo': ['image', 'description'],
-        'JobPosting': ['employmentType', 'jobLocation'],
-    }
-    return recommended.get(type_name, [])
-
-def get_google_rich_snippet_support(type_name):
-    support = {
-        'Organization': '支持品牌知识面板（Brand Panel）',
-        'Product': '支持商品富摘要（Product Rich Result）',
-        'FAQPage': '支持FAQ富摘要（FAQ Rich Result）',
-        'BreadcrumbList': '支持面包屑富摘要（Breadcrumb Rich Result）',
-        'NewsArticle': '支持Top Stories等新闻富摘要',
-        'Event': '支持活动富摘要（Event Rich Result）',
-        'HowTo': '支持HowTo富摘要（HowTo Rich Result）',
-        'JobPosting': '支持职位富摘要（Job Posting Rich Result）',
-    }
-    return support.get(type_name, '无特殊富摘要，但有助于SEO结构化。')
-
-# ... existing code ... 
