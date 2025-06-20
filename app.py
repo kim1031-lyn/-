@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import os
 from typing import List
+import base64
 
 # 加载模板库
 def load_templates():
@@ -102,126 +103,140 @@ def get_google_rich_snippet_support(type_name):
     }
     return support.get(type_name, '无特殊富摘要，但有助于SEO结构化。')
 
-st.set_page_config(page_title="结构化数据工具", layout="wide")
-st.title("结构化数据生成与解析工具")
-tabs = st.tabs(["生成/编辑", "解析/诊断", "外部资源"])
-
-# 读取模板
-templates = load_templates()
-type_list = list(templates.keys())
-
-# 注入全局自定义CSS
-st.markdown('''
-<style>
-body, .stApp {
-    background-color: #F5E9DA !important;
-    font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    color: #4E3B31;
+# 主题色方案
+THEMES = {
+    '大地色': {
+        'bg': '#F5E9DA', 'card': '#FFF8F0', 'accent': '#A67C52', 'button': '#D7B899', 'text': '#4E3B31', 'shadow': '#E0C9A6', 'code': '#F3E7D9', 'input': '#FFF8F0', 'border': '#E0C9A6', 'info': '#7C5C3B'
+    },
+    '深色': {
+        'bg': '#2D2A26', 'card': '#3B362F', 'accent': '#D7B899', 'button': '#A67C52', 'text': '#FFF8F0', 'shadow': '#4E3B31', 'code': '#3B362F', 'input': '#4E3B31', 'border': '#A67C52', 'info': '#D7B899'
+    },
+    '浅色': {
+        'bg': '#F8F8F8', 'card': '#FFFFFF', 'accent': '#A67C52', 'button': '#D7B899', 'text': '#4E3B31', 'shadow': '#E0C9A6', 'code': '#F3E7D9', 'input': '#FFF8F0', 'border': '#E0C9A6', 'info': '#7C5C3B'
+    }
 }
+if 'theme' not in st.session_state:
+    st.session_state['theme'] = '大地色'
+cur_theme = THEMES[st.session_state['theme']]
 
-h1, h2, h3, h4, h5, h6 {
-    color: #4E3B31 !important;
+# 注入全局自定义CSS（支持主题切换）
+st.markdown(f'''
+<style>
+body, .stApp {{
+    background-color: {cur_theme['bg']} !important;
+    font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    color: {cur_theme['text']};
+}}
+
+h1, h2, h3, h4, h5, h6 {{
+    color: {cur_theme['text']} !important;
     font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
     font-weight: 800;
     letter-spacing: 1px;
-}
+}}
 
-.stTabs [data-baseweb="tab-list"] {
-    background: #FFF8F0;
+.stTabs [data-baseweb="tab-list"] {{
+    background: {cur_theme['card']};
     border-radius: 18px 18px 0 0;
-    box-shadow: 0 2px 8px #E0C9A6;
+    box-shadow: 0 2px 8px {cur_theme['shadow']};
     padding: 0.5rem 1rem;
-}
+}}
 
-.stTabs [data-baseweb="tab"] {
-    color: #A67C52 !important;
+.stTabs [data-baseweb="tab"] {{
+    color: {cur_theme['accent']} !important;
     font-weight: 700;
     font-size: 1.1rem;
     border-radius: 12px 12px 0 0;
     margin-right: 8px;
-}
+}}
 
-.stTabs [aria-selected="true"] {
-    background: #F3E7D9 !important;
-    color: #4E3B31 !important;
-    box-shadow: 0 2px 8px #E0C9A6;
-}
+.stTabs [aria-selected="true"] {{
+    background: {cur_theme['code']} !important;
+    color: {cur_theme['text']} !important;
+    box-shadow: 0 2px 8px {cur_theme['shadow']};
+}}
 
-.stButton > button {
-    background: linear-gradient(90deg, #D7B899 60%, #A67C52 100%);
+.stButton > button {{
+    background: linear-gradient(90deg, {cur_theme['button']} 60%, {cur_theme['accent']} 100%);
     color: #fff;
     border: none;
     border-radius: 16px;
     font-weight: 700;
     font-size: 1.1rem;
-    box-shadow: 0 2px 8px #E0C9A6;
+    box-shadow: 0 2px 8px {cur_theme['shadow']};
     padding: 0.5rem 1.5rem;
     margin: 0.5rem 0;
     transition: background 0.2s, box-shadow 0.2s;
-}
-.stButton > button:hover {
-    background: linear-gradient(90deg, #A67C52 60%, #D7B899 100%);
-    box-shadow: 0 4px 16px #D7B899;
-}
+}}
+.stButton > button:hover {{
+    background: linear-gradient(90deg, {cur_theme['accent']} 60%, {cur_theme['button']} 100%);
+    box-shadow: 0 4px 16px {cur_theme['button']};
+}}
 
-.stTextArea textarea, .stTextInput input {
-    background: #FFF8F0 !important;
-    color: #4E3B31 !important;
+.stTextArea textarea, .stTextInput input {{
+    background: {cur_theme['input']} !important;
+    color: {cur_theme['text']} !important;
     border-radius: 12px !important;
-    border: 1.5px solid #E0C9A6 !important;
+    border: 1.5px solid {cur_theme['border']} !important;
     font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
     font-size: 1.05rem;
-    box-shadow: 0 2px 8px #E0C9A6;
-}
+    box-shadow: 0 2px 8px {cur_theme['shadow']};
+}}
 
-.stCode, .stMarkdown code {
-    background: #F3E7D9 !important;
-    color: #4E3B31 !important;
+.stCode, .stMarkdown code {{
+    background: {cur_theme['code']} !important;
+    color: {cur_theme['text']} !important;
     border-radius: 12px !important;
     font-family: 'Fira Mono', 'Consolas', 'Menlo', 'Monaco', 'Courier New', monospace;
     font-size: 1.02rem;
-    box-shadow: 0 2px 8px #E0C9A6;
-}
+    box-shadow: 0 2px 8px {cur_theme['shadow']};
+}}
 
-/* 卡片式分区 */
-.block-card {
-    background: #FFF8F0;
+.block-card {{
+    background: {cur_theme['card']};
     border-radius: 18px;
-    box-shadow: 0 4px 24px #E0C9A6;
+    box-shadow: 0 4px 24px {cur_theme['shadow']};
     padding: 2rem 2.5rem 1.5rem 2.5rem;
     margin-bottom: 2rem;
-}
+}}
 
-/* 诊断卡片 */
-.diagnose-card {
-    background: #F3E7D9;
+.diagnose-card {{
+    background: {cur_theme['code']};
     border-radius: 14px;
-    box-shadow: 0 2px 8px #E0C9A6;
+    box-shadow: 0 2px 8px {cur_theme['shadow']};
     padding: 1.2rem 1.5rem 1rem 1.5rem;
     margin-bottom: 1.2rem;
-    color: #4E3B31;
-}
+    color: {cur_theme['text']};
+}}
 
-/* 分隔线 */
-hr {
+hr {{
     border: 0;
-    border-top: 1.5px dashed #E0C9A6;
+    border-top: 1.5px dashed {cur_theme['shadow']};
     margin: 1.2rem 0;
-}
+}}
 
-/* 主要内容区居中 */
-.main-center {
+.main-center {{
     max-width: 900px;
     margin: 0 auto;
-}
+}}
 
-/* 诊断区嵌套缩进 */
-.diagnose-indent {
+.diagnose-indent {{
     margin-left: 2.2em;
-}
-
+}}
 </style>
 ''', unsafe_allow_html=True)
+
+# 侧边栏与主区联动状态
+if 'tab_idx' not in st.session_state:
+    st.session_state['tab_idx'] = 0
+if 'search_type' not in st.session_state:
+    st.session_state['search_type'] = ''
+if 'history' not in st.session_state:
+    st.session_state['history'] = []
+if 'favorites' not in st.session_state:
+    st.session_state['favorites'] = []
+if 'editor_content' not in st.session_state:
+    st.session_state['editor_content'] = {}
 
 # 侧边栏UI实现
 with st.sidebar:
@@ -233,69 +248,111 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class='block-card' style='padding:1.2rem 1.2rem 0.7rem 1.2rem;'>
-        <div style='font-size:1.1rem; font-weight:700; color:#A67C52; margin-bottom:0.7rem;'>主功能导航</div>
-        <ul style='list-style:none; padding-left:0;'>
-            <li style='margin-bottom:0.5rem;'><span style='font-size:1.2rem;'>🏠</span> 生成/编辑</li>
-            <li style='margin-bottom:0.5rem;'><span style='font-size:1.2rem;'>🧩</span> 解析/诊断</li>
-            <li style='margin-bottom:0.5rem;'><span style='font-size:1.2rem;'>🌐</span> 外部资源</li>
-            <li style='margin-bottom:0.5rem;'><span style='font-size:1.2rem;'>📊</span> SEO报告/分析</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
+    # 主功能导航
+    navs = ["生成/编辑", "解析/诊断", "外部资源", "SEO报告/分析"]
+    nav_icons = ["🏠", "🧩", "🌐", "📊"]
+    for i, (nav, icon) in enumerate(zip(navs, nav_icons)):
+        if st.button(f"{icon} {nav}", key=f"nav_{i}", use_container_width=True):
+            st.session_state['tab_idx'] = i
+            st.experimental_rerun()
 
-    st.markdown("""
-    <div class='block-card' style='padding:1.1rem 1.2rem 0.7rem 1.2rem;'>
-        <div style='font-size:1.1rem; font-weight:700; color:#A67C52; margin-bottom:0.7rem;'>快捷操作</div>
-        <button style='width:100%;margin-bottom:0.5rem;background:#D7B899;color:#fff;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>一键复制全部代码</button>
-        <button style='width:100%;margin-bottom:0.5rem;background:#A67C52;color:#fff;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>清空/重置</button>
-        <button style='width:100%;margin-bottom:0.5rem;background:#E9D8C3;color:#4E3B31;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>导入/导出</button>
-        <button style='width:100%;margin-bottom:0.5rem;background:#FFF8F0;color:#A67C52;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>历史记录/收藏夹</button>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("---")
 
-    st.markdown("""
-    <div class='block-card' style='padding:1.1rem 1.2rem 0.7rem 1.2rem;'>
-        <div style='font-size:1.1rem; font-weight:700; color:#A67C52; margin-bottom:0.7rem;'>智能与个性化</div>
-        <input type='text' placeholder='类型快速搜索...' style='width:100%;border-radius:10px;border:1.5px solid #E0C9A6;padding:0.4rem 0.7rem;margin-bottom:0.5rem;font-size:1rem;'>
-        <button style='width:100%;margin-bottom:0.5rem;background:#A67C52;color:#fff;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>AI一键补全</button>
-        <div style='background:#F3E7D9;border-radius:10px;padding:0.5rem 0.7rem;margin-bottom:0.5rem;color:#7C5C3B;font-size:0.98rem;'>SEO小贴士：结构化数据可提升富摘要展现率，建议定期校验！</div>
-        <button style='width:100%;margin-bottom:0.5rem;background:#E9D8C3;color:#4E3B31;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>主题切换</button>
-    </div>
-    """, unsafe_allow_html=True)
+    # 快捷操作
+    st.markdown("#### 快捷操作")
+    if st.button("一键复制全部代码", use_container_width=True):
+        # 复制当前生成/编辑区代码
+        code = st.session_state.get('last_generated_code', '')
+        if code:
+            st.code(code, language='html')
+            st.toast("已复制到剪贴板！", icon="✅")
+        else:
+            st.toast("暂无可复制内容！", icon="⚠️")
+    if st.button("清空/重置", use_container_width=True):
+        st.session_state['editor_content'] = {}
+        st.toast("已重置编辑区！", icon="✅")
+        st.experimental_rerun()
+    uploaded = st.file_uploader("导入JSON", type=['json'], label_visibility='collapsed')
+    if uploaded:
+        try:
+            data = json.load(uploaded)
+            st.session_state['editor_content'] = data
+            st.toast("导入成功！", icon="✅")
+            st.experimental_rerun()
+        except Exception as e:
+            st.toast(f"导入失败: {e}", icon="⚠️")
+    if st.button("导出当前JSON", use_container_width=True):
+        content = st.session_state.get('editor_content', {})
+        b = json.dumps(content, ensure_ascii=False, indent=2).encode('utf-8')
+        b64 = base64.b64encode(b).decode()
+        href = f'<a href="data:application/json;base64,{b64}" download="structured_data.json">点击下载JSON文件</a>'
+        st.markdown(href, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class='block-card' style='padding:1.1rem 1.2rem 0.7rem 1.2rem;'>
-        <div style='font-size:1.1rem; font-weight:700; color:#A67C52; margin-bottom:0.7rem;'>协作与服务</div>
-        <button style='width:100%;margin-bottom:0.5rem;background:#A67C52;color:#fff;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>团队协作/分享</button>
-        <button style='width:100%;margin-bottom:0.5rem;background:#FFF8F0;color:#A67C52;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>反馈/建议</button>
-        <button style='width:100%;margin-bottom:0.5rem;background:#E9D8C3;color:#4E3B31;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>帮助/文档</button>
-        <button style='width:100%;margin-bottom:0.5rem;background:#FFF8F0;color:#A67C52;border:none;border-radius:12px;padding:0.5rem 0;font-weight:700;box-shadow:0 2px 8px #E0C9A6;'>联系我们</button>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("---")
 
-    st.markdown("""
-    <div class='block-card' style='padding:1.1rem 1.2rem 0.7rem 1.2rem;'>
-        <div style='font-size:1.1rem; font-weight:700; color:#A67C52; margin-bottom:0.7rem;'>🚀 高级功能（可扩展）</div>
-        <ul style='list-style:disc inside; color:#7C5C3B; font-size:1rem;'>
-            <li>批量校验/批量生成结构化数据</li>
-            <li>富摘要模拟预览</li>
-            <li>结构化数据对比/差异分析</li>
-            <li>多语言支持/国际化</li>
-            <li>API接口/自动化集成</li>
-            <li>用户登录/个性化/云端存储</li>
-            <li>数据可视化与SEO趋势分析</li>
-            <li>SEO富摘要监控与推送</li>
-            <li>团队协作/权限管理</li>
-            <li>结构化数据知识库/案例库</li>
-            <li>AI智能诊断报告/一键导出</li>
-            <li>Schema.org标准自动更新</li>
-            <li>内容与结构一体化编辑</li>
-            <li>行业模板市场/社区生态</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
+    # 历史记录/收藏夹
+    st.markdown("#### 历史记录/收藏夹")
+    if st.session_state['history']:
+        for i, h in enumerate(st.session_state['history'][-5:][::-1]):
+            if st.button(f"恢复历史[{i+1}]", key=f"history_{i}", use_container_width=True):
+                st.session_state['editor_content'] = h
+                st.toast("已恢复历史记录！", icon="✅")
+                st.experimental_rerun()
+    if st.session_state['favorites']:
+        for i, f in enumerate(st.session_state['favorites'][-5:][::-1]):
+            if st.button(f"恢复收藏[{i+1}]", key=f"fav_{i}", use_container_width=True):
+                st.session_state['editor_content'] = f
+                st.toast("已恢复收藏！", icon="✅")
+                st.experimental_rerun()
+
+    st.markdown("---")
+
+    # 智能与个性化
+    st.markdown("#### 智能与个性化")
+    st.session_state['search_type'] = st.text_input("类型快速搜索", value=st.session_state['search_type'], placeholder="输入类型关键词...")
+    if st.button("AI一键补全", use_container_width=True):
+        st.toast("AI补全功能即将上线，敬请期待！", icon="🤖")
+    st.info("SEO小贴士：结构化数据可提升富摘要展现率，建议定期校验！", icon="💡")
+    theme = st.selectbox("主题切换", list(THEMES.keys()), index=list(THEMES.keys()).index(st.session_state['theme']))
+    if theme != st.session_state['theme']:
+        st.session_state['theme'] = theme
+        st.experimental_rerun()
+
+    st.markdown("---")
+
+    # 协作与服务
+    st.markdown("#### 协作与服务")
+    if st.button("团队协作/分享", use_container_width=True):
+        st.toast("团队协作/分享功能即将上线！", icon="🤝")
+    if st.button("反馈/建议", use_container_width=True):
+        st.toast("反馈/建议功能即将上线！", icon="✉️")
+    if st.button("帮助/文档", use_container_width=True):
+        st.toast("帮助/文档功能即将上线！", icon="📖")
+    if st.button("联系我们", use_container_width=True):
+        st.toast("联系我们功能即将上线！", icon="☎️")
+
+    st.markdown("---")
+
+    # 高级功能区
+    st.markdown("#### 🚀 高级功能（可扩展）")
+    st.markdown('''
+    <ul style='list-style:disc inside; color:#7C5C3B; font-size:1rem;'>
+        <li>批量校验/批量生成结构化数据</li>
+        <li>富摘要模拟预览</li>
+        <li>结构化数据对比/差异分析</li>
+        <li>多语言支持/国际化</li>
+        <li>API接口/自动化集成</li>
+        <li>用户登录/个性化/云端存储</li>
+        <li>数据可视化与SEO趋势分析</li>
+        <li>SEO富摘要监控与推送</li>
+        <li>团队协作/权限管理</li>
+        <li>结构化数据知识库/案例库</li>
+        <li>AI智能诊断报告/一键导出</li>
+        <li>Schema.org标准自动更新</li>
+        <li>内容与结构一体化编辑</li>
+        <li>行业模板市场/社区生态</li>
+    </ul>
+    ''', unsafe_allow_html=True)
 
     st.markdown("""
     <div style='text-align:center; color:#A67C52; font-size:0.98rem; margin-top:2rem;'>
@@ -303,6 +360,14 @@ with st.sidebar:
         <div style='color:#7C5C3B;'>v1.0.0 | 由AI驱动</div>
     </div>
     """, unsafe_allow_html=True)
+
+st.set_page_config(page_title="结构化数据工具", layout="wide")
+st.title("结构化数据生成与解析工具")
+tabs = st.tabs(["生成/编辑", "解析/诊断", "外部资源"])
+
+# 读取模板
+templates = load_templates()
+type_list = list(templates.keys())
 
 # Tab1: 生成/编辑
 with tabs[0]:
