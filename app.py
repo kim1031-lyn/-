@@ -51,28 +51,35 @@ type_list = list(templates.keys())
 with tabs[0]:
     st.header("结构化数据生成与编辑")
     selected_types = st.multiselect("选择结构化数据类型（可多选）", type_list, default=[type_list[0]])
-    user_jsons = {}
+    # 合并所有选中类型的JSON为一个数组
+    json_array = []
     for t in selected_types:
         raw_code = templates[t]
         json_code = extract_json_from_script(raw_code)
-        st.subheader(f"{t} 可编辑JSON-LD代码")
-        user_code = st.text_area(f"请编辑{t}的JSON-LD代码（仅JSON部分）", value=json_code, height=250, key=f"edit_{t}")
-        user_jsons[t] = user_code
-    if st.button("生成完整<script>嵌入代码", key="gen_script"):
-        all_valid = True
-        script_blocks = []
-        for t, code in user_jsons.items():
-            try:
-                parsed = json.loads(code)
-                formatted = json.dumps(parsed, ensure_ascii=False, indent=2)
-                script_blocks.append(f'<script type="application/ld+json">\n{formatted}\n</script>')
-            except Exception as e:
-                st.error(f"{t} 的JSON格式有误：{e}")
-                all_valid = False
-        if all_valid:
-            st.success("已生成完整嵌入代码，可直接复制到网页！")
-            for i, block in enumerate(script_blocks):
-                st.code(block, language='html')
+        try:
+            parsed = json.loads(json_code)
+            json_array.append(parsed)
+        except Exception:
+            pass
+    # 生成初始完整<script>代码
+    formatted_array = json.dumps(json_array, ensure_ascii=False, indent=2)
+    script_block = f'<script type="application/ld+json">\n{formatted_array}\n</script>'
+    st.subheader("可编辑集成版结构化数据代码（含<script>标签）")
+    user_script = st.text_area("请直接编辑下方完整代码，包括<script>标签", value=script_block, height=400)
+    # 自动提取JSON部分并校验
+    def extract_json_from_full_script(s):
+        lines = s.strip().splitlines()
+        json_lines = [line for line in lines if not line.strip().startswith('<script') and not line.strip().startswith('</script>')]
+        return '\n'.join(json_lines)
+    json_part = extract_json_from_full_script(user_script)
+    try:
+        parsed = json.loads(json_part)
+        formatted = json.dumps(parsed, ensure_ascii=False, indent=2)
+        st.success("格式正确！最终可用代码如下：")
+        st.code(f'<script type="application/ld+json">\n{formatted}\n</script>', language='html')
+    except Exception as e:
+        st.error(f"JSON格式有误，请检查：{e}")
+        st.code(user_script, language='html')
 
 # Tab2: 解析/诊断
 with tabs[1]:
@@ -91,15 +98,27 @@ with tabs[1]:
             formatted = json.dumps(parsed, ensure_ascii=False, indent=2)
             st.success("格式化结果：")
             st.code(formatted, language='json')
-            # 结构化展示主要字段
-            st.markdown(f"**@context**: {parsed.get('@context', '无')}")
-            st.markdown(f"**@type**: {parsed.get('@type', '无')}")
+            st.markdown(f"**@context**: {parsed.get('@context', '无') if isinstance(parsed, dict) else '数组类型'}")
+            st.markdown(f"**@type**: {parsed.get('@type', '无') if isinstance(parsed, dict) else '数组类型'}")
             st.markdown("**主要属性：**")
-            for k, v in parsed.items():
-                if k not in ["@context", "@type"]:
-                    st.markdown(f"- `{k}`: {v}")
-            # SEO检查
-            tips = seo_check(parsed)
+            if isinstance(parsed, dict):
+                for k, v in parsed.items():
+                    if k not in ["@context", "@type"]:
+                        st.markdown(f"- `{k}`: {v}")
+            elif isinstance(parsed, list):
+                for idx, item in enumerate(parsed):
+                    st.markdown(f"---\n**第{idx+1}个结构化数据块：**")
+                    st.markdown(f"- @context: {item.get('@context', '无')}")
+                    st.markdown(f"- @type: {item.get('@type', '无')}")
+                    for k, v in item.items():
+                        if k not in ["@context", "@type"]:
+                            st.markdown(f"  - `{k}`: {v}")
+            tips = []
+            if isinstance(parsed, dict):
+                tips = seo_check(parsed)
+            elif isinstance(parsed, list):
+                for item in parsed:
+                    tips.extend(seo_check(item))
             if tips:
                 for tip in tips:
                     st.warning(tip)
