@@ -155,41 +155,45 @@ with tabs[1]:
         return s
     json_part = auto_extract_json(input_code)
     if st.button("诊断分析", key="parse_btn"):
-        try:
-            parsed = json.loads(json_part)
-            # 支持数组和单对象
-            items = parsed if isinstance(parsed, list) else [parsed]
-            for idx, item in enumerate(items):
+        def diagnose_item(item, idx=None, level=0):
+            prefix = "&nbsp;&nbsp;" * level
+            if isinstance(item, dict):
                 type_name = item.get('@type', '未知')
-                st.markdown(f"### 第{idx+1}个结构化数据块：{type_name}")
-                # 类型简述
-                st.info(f"**类型说明：** {get_type_brief(type_name)}")
-                # 必填字段检查
+                st.markdown(f"{prefix}### 第{idx+1 if idx is not None else ''}个结构化数据块：{type_name}", unsafe_allow_html=True)
+                st.info(f"{prefix}**类型说明：** {get_type_brief(type_name)}", icon="ℹ️")
                 required = get_required_fields(type_name)
                 missing = [f for f in required if f not in item]
                 if missing:
-                    st.warning(f"缺失必填字段：{', '.join(missing)}。请补充以保证结构化数据被正确识别。")
+                    st.warning(f"{prefix}缺失必填字段：{', '.join(missing)}。请补充以保证结构化数据被正确识别。", icon="⚠️")
                 else:
-                    st.success("所有必填字段均已填写。")
-                # 推荐字段建议
+                    st.success(f"{prefix}所有必填字段均已填写。", icon="✅")
                 recommended = get_recommended_fields(type_name)
                 rec_missing = [f for f in recommended if f not in item]
                 if rec_missing:
-                    st.info(f"建议补充推荐字段：{', '.join(rec_missing)}，有助于提升SEO效果和富摘要丰富度。")
-                # Google富摘要支持
-                st.info(f"**Google富摘要支持：** {get_google_rich_snippet_support(type_name)}")
-                # 其他专业建议（举例）
+                    st.info(f"{prefix}建议补充推荐字段：{', '.join(rec_missing)}，有助于提升SEO效果和富摘要丰富度。", icon="💡")
+                st.info(f"{prefix}**Google富摘要支持：** {get_google_rich_snippet_support(type_name)}", icon="🔎")
+                # 其他专业建议
                 if type_name == 'Product':
                     if 'offers' in item and isinstance(item['offers'], dict):
                         if 'price' not in item['offers']:
-                            st.warning("Product的offers建议包含price字段，利于价格富摘要展示。")
+                            st.warning(f"{prefix}Product的offers建议包含price字段，利于价格富摘要展示。", icon="⚠️")
                     if 'image' not in item:
-                        st.info("建议为Product补充image字段，提升商品吸引力。")
+                        st.info(f"{prefix}建议为Product补充image字段，提升商品吸引力。", icon="💡")
                 if type_name == 'FAQPage':
                     if 'mainEntity' in item and isinstance(item['mainEntity'], list):
                         for q in item['mainEntity']:
                             if 'acceptedAnswer' not in q:
-                                st.warning("FAQ每个问题建议包含acceptedAnswer字段。")
+                                st.warning(f"{prefix}FAQ每个问题建议包含acceptedAnswer字段。", icon="⚠️")
+            elif isinstance(item, list):
+                for sub_idx, sub_item in enumerate(item):
+                    diagnose_item(sub_item, sub_idx, level+1)
+            else:
+                st.info(f"{prefix}无法识别的数据类型: {item}", icon="❓")
+        try:
+            parsed = json.loads(json_part)
+            items = parsed if isinstance(parsed, list) else [parsed]
+            for idx, item in enumerate(items):
+                diagnose_item(item, idx)
             st.success("诊断与分析完成。如需更详细建议，请参考schema.org官方文档或Google Search Gallery。")
         except Exception as e:
             st.error(f"解析失败：{e}")
