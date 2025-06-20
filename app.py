@@ -157,9 +157,11 @@ with tabs[1]:
     if st.button("诊断分析", key="parse_btn"):
         def diagnose_item(item, global_idx, level=0):
             prefix = "&nbsp;&nbsp;" * level
+            title_prefix = "#" * (3 + min(level, 2))  # h3/h4/h5
             if isinstance(item, dict):
+                st.markdown(f"{prefix}<hr style='margin:4px 0 4px 0;border:0;border-top:1px dashed #bbb;' />", unsafe_allow_html=True)
                 type_name = item.get('@type', '未知')
-                st.markdown(f"{prefix}### 第[{global_idx[0]}]个结构化数据块：{type_name}", unsafe_allow_html=True)
+                st.markdown(f"{prefix}<{title_prefix}>第[{global_idx[0]}]个结构化数据块：{type_name}</{title_prefix}>", unsafe_allow_html=True)
                 st.info(f"{prefix}**类型说明：** {get_type_brief(type_name)}", icon="ℹ️")
                 required = get_required_fields(type_name)
                 missing = [f for f in required if f not in item]
@@ -188,7 +190,8 @@ with tabs[1]:
                 if len(item) == 0:
                     st.info(f"{prefix}嵌套结构化数据数组（空数组）", icon="❓")
                 else:
-                    st.info(f"{prefix}嵌套结构化数据数组（共{len(item)}项）", icon="📦")
+                    st.info(f"{prefix}嵌套结构化数据数组（共{len(item)}项）\n这是一个结构化数据的数组，常见于批量图片、FAQ、评论等场景。每个数组元素都是一个独立的结构化数据块，建议每个元素都符合schema.org规范。", icon="📦")
+                    st.markdown(f"{prefix}<div style='color:#888;font-size:13px;margin-bottom:4px;'>例如：FAQ的mainEntity、批量ImageObject、批量Review等都采用数组结构。</div>", unsafe_allow_html=True)
                     for sub_item in item:
                         if isinstance(sub_item, dict):
                             global_idx[0] += 1
