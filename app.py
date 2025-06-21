@@ -4,12 +4,43 @@ import os
 from typing import List
 import base64
 
+# ======================= 调试代码开始 =======================
+# 这部分代码将帮助我们诊断云端服务器的文件系统问题
+st.write("--- 调试信息 ---")
+try:
+    # 获取当前工作目录
+    cwd = os.getcwd()
+    st.write(f"当前工作目录 (Current Working Directory): {cwd}")
+
+    # 列出当前目录下的所有文件和文件夹
+    st.write("当前目录内容 (Contents of Current Directory):")
+    st.write(os.listdir('.'))
+
+    # 尝试列出 templates 文件夹的内容
+    templates_path = 'templates'
+    st.write(f"检查 '{templates_path}' 文件夹是否存在...")
+    if os.path.exists(templates_path):
+        st.success(f"文件夹 '{templates_path}' 存在！")
+        st.write(f"'{templates_path}' 文件夹内容:")
+        st.write(os.listdir(templates_path))
+    else:
+        st.error(f"致命错误：在当前目录下找不到 '{templates_path}' 文件夹！")
+        st.info("请检查您的GitHub仓库，确认 'templates' 文件夹（全小写）和其中的 'structured_data_templates.json' 文件已正确上传。")
+
+
+except Exception as e:
+    st.error(f"在调试阶段发生异常: {e}")
+st.write("--- 调试信息结束 ---")
+# ======================== 调试代码结束 ========================
+
+
 st.set_page_config(page_title="结构化数据工具", layout="wide")
 
 # 加载模板库
 def load_templates():
     path = 'templates/structured_data_templates.json'
     if not os.path.exists(path):
+        # 即使这里有检查，上面的调试代码会更早地暴露问题
         st.error(f"找不到模板文件: {path}，请检查文件路径和上传情况。")
         st.stop()
     with open(path, 'r', encoding='utf-8') as f:
@@ -256,16 +287,16 @@ with st.sidebar:
     for i, (nav, icon) in enumerate(zip(navs, nav_icons)):
         if st.button(f"{icon} {nav}", key=f"nav_{i}", use_container_width=True):
             st.session_state['tab_idx'] = i
-            st.experimental_rerun()
+            st.rerun()
 
     st.markdown("---")
 
     # 主题切换
     st.markdown("#### 主题切换")
-    theme = st.selectbox("选择主题", list(THEMES.keys()), index=list(THEMES.keys()).index(st.session_state['theme']))
+    theme = st.selectbox("选择主题", list(THEMES.keys()), index=list(THEKES.keys()).index(st.session_state['theme']))
     if theme != st.session_state['theme']:
         st.session_state['theme'] = theme
-        st.experimental_rerun()
+        st.rerun()
 
     st.markdown("---")
 
@@ -330,18 +361,48 @@ with tabs[0]:
             json_array.append(parsed)
         except Exception:
             pass
-    formatted_array = json.dumps(json_array, ensure_ascii=False, indent=2)
-    script_block = f'<script type="application/ld+json">\n{formatted_array}\n</script>'
+    
+    # 根据选择的类型数量决定输出是对象还是数组
+    if len(json_array) == 1:
+        # 如果只有一个类型，直接输出该JSON对象
+        final_json_output = json_array[0]
+    else:
+        # 如果有多个类型，输出一个JSON数组
+        final_json_output = json_array
+
+    formatted_json = json.dumps(final_json_output, ensure_ascii=False, indent=2)
+    script_block = f'<script type="application/ld+json">\n{formatted_json}\n</script>'
+    
     # 编辑区内容联动
-    if not st.session_state['editor_content']:
+    # 当选择的类型变化时，更新编辑区内容
+    # 创建一个唯一的key来表示当前的选择状态
+    selection_key = ",".join(sorted(selected_types))
+    if 'last_selection_key' not in st.session_state or st.session_state['last_selection_key'] != selection_key:
         st.session_state['editor_content'] = script_block
+        st.session_state['last_selection_key'] = selection_key
+
     user_script = st.text_area("请直接编辑下方完整代码，包括<script>标签", value=st.session_state['editor_content'], height=400, key="main_editor")
     st.session_state['editor_content'] = user_script
+    
     # 自动提取JSON部分并校验
     def extract_json_from_full_script(s):
+        try:
+            # 更鲁棒的提取方法，处理前后可能存在的空格或换行
+            start = s.find('{')
+            end = s.rfind('}') + 1
+            if start != -1 and end != 0:
+                 # 尝试处理数组的情况
+                if s.strip().startswith('<script type="application/ld+json">\n[') :
+                    start = s.find('[')
+                    end = s.rfind(']') + 1
+                return s[start:end]
+        except Exception:
+            pass
+        # 旧方法作为备用
         lines = s.strip().splitlines()
         json_lines = [line for line in lines if not line.strip().startswith('<script') and not line.strip().startswith('</script>')]
         return '\n'.join(json_lines)
+
     json_part = extract_json_from_full_script(user_script)
     try:
         parsed = json.loads(json_part)
@@ -367,72 +428,73 @@ with tabs[1]:
     input_code = st.text_area("粘贴代码", height=250, key="parse_input")
     def auto_extract_json(s):
         if '<script' in s:
-            return extract_json_from_script(s)
+            return extract_json_from_full_script(s) # 使用上面改进的函数
         return s
-    json_part = auto_extract_json(input_code)
+    
     if st.button("诊断分析", key="parse_btn"):
+        json_part_to_diagnose = auto_extract_json(input_code)
         def diagnose_item(item, global_idx, level=0):
-            prefix = "&nbsp;&nbsp;" * level
+            prefix = "&nbsp;&nbsp;" * level * 2 # 增加缩进
             title_prefix = "#" * (3 + min(level, 2))  # h3/h4/h5
+            
+            # 卡片式包裹
+            st.markdown(f"<div class='diagnose-card' style='margin-left: {level*20}px'>", unsafe_allow_html=True)
+
             if isinstance(item, dict):
-                st.markdown(f"{prefix}<hr style='margin:4px 0 4px 0;border:0;border-top:1px dashed #bbb;' />", unsafe_allow_html=True)
                 type_name = item.get('@type', '未知')
-                st.markdown(f"{prefix}<{title_prefix}>第[{global_idx[0]}]个结构化数据块：{type_name}</{title_prefix}>", unsafe_allow_html=True)
-                st.info(f"{prefix}**类型说明：** {get_type_brief(type_name)}", icon="ℹ️")
+                st.markdown(f"<{title_prefix}>第[{global_idx[0]}]个结构化数据块：{type_name}</{title_prefix}>", unsafe_allow_html=True)
+                
+                st.markdown(f"**类型说明：** {get_type_brief(type_name)}")
+                
                 required = get_required_fields(type_name)
                 missing = [f for f in required if f not in item]
                 if missing:
-                    st.warning(f"{prefix}缺失必填字段：{', '.join(missing)}。请补充以保证结构化数据被正确识别。", icon="⚠️")
+                    st.warning(f"缺失必填字段：`{', '.join(missing)}`。请补充以保证结构化数据被正确识别。")
                 else:
-                    st.success(f"{prefix}所有必填字段均已填写。", icon="✅")
+                    st.success(f"所有必填字段均已填写。")
+                
                 recommended = get_recommended_fields(type_name)
                 rec_missing = [f for f in recommended if f not in item]
                 if rec_missing:
-                    st.info(f"{prefix}建议补充推荐字段：{', '.join(rec_missing)}，有助于提升SEO效果和富摘要丰富度。", icon="💡")
-                st.info(f"{prefix}**Google富摘要支持：** {get_google_rich_snippet_support(type_name)}", icon="🔎")
+                    st.info(f"建议补充推荐字段：`{', '.join(rec_missing)}`，有助于提升SEO效果和富摘要丰富度。")
+                
+                st.markdown(f"**Google富摘要支持：** {get_google_rich_snippet_support(type_name)}")
+
                 # 其他专业建议
                 if type_name == 'Product':
                     if 'offers' in item and isinstance(item['offers'], dict):
                         if 'price' not in item['offers']:
-                            st.warning(f"{prefix}Product的offers建议包含price字段，利于价格富摘要展示。", icon="⚠️")
+                            st.warning(f"Product的offers建议包含`price`字段，利于价格富摘要展示。")
                     if 'image' not in item:
-                        st.info(f"{prefix}建议为Product补充image字段，提升商品吸引力。", icon="💡")
+                        st.info(f"建议为Product补充`image`字段，提升商品吸引力。")
                 if type_name == 'FAQPage':
                     if 'mainEntity' in item and isinstance(item['mainEntity'], list):
-                        for q in item['mainEntity']:
+                        for q_idx, q in enumerate(item['mainEntity']):
                             if 'acceptedAnswer' not in q:
-                                st.warning(f"{prefix}FAQ每个问题建议包含acceptedAnswer字段。", icon="⚠️")
+                                st.warning(f"FAQ第 {q_idx+1} 个问题 (Question) 建议包含`acceptedAnswer`字段。")
+            
             elif isinstance(item, list):
-                if len(item) == 0:
-                    st.info(f"{prefix}嵌套结构化数据数组（空数组）", icon="❓")
-                else:
-                    st.info(f"{prefix}嵌套结构化数据数组（共{len(item)}项）\n这是一个结构化数据的数组，常见于批量图片、FAQ、评论等场景。每个数组元素都是一个独立的结构化数据块，建议每个元素都符合schema.org规范。", icon="📦")
-                    st.markdown(f"{prefix}<div style='color:#888;font-size:13px;margin-bottom:4px;'>例如：FAQ的mainEntity、批量ImageObject、批量Review等都采用数组结构。</div>", unsafe_allow_html=True)
-                    for sub_item in item:
-                        if isinstance(sub_item, dict):
-                            global_idx[0] += 1
-                            diagnose_item(sub_item, global_idx, level+1)
-                        elif isinstance(sub_item, list):
-                            diagnose_item(sub_item, global_idx, level+1)
-                        else:
-                            st.info(f"{prefix}无法识别的数据类型: {sub_item}", icon="❓")
+                 st.info(f"这是一个结构化数据数组，共包含 {len(item)} 项。")
+                 for sub_item in item:
+                    if isinstance(sub_item, dict):
+                        global_idx[0] += 1
+                        diagnose_item(sub_item, global_idx, level+1)
+                    else:
+                        st.warning(f"数组中包含无法识别的数据类型: {type(sub_item)}")
             else:
-                st.info(f"{prefix}无法识别的数据类型: {item}", icon="❓")
+                 st.error(f"无法识别的数据类型: {type(item)}")
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
         try:
-            parsed = json.loads(json_part)
-            items = parsed if isinstance(parsed, list) else [parsed]
+            parsed = json.loads(json_part_to_diagnose)
+            items_to_diagnose = parsed if isinstance(parsed, list) else [parsed]
             global_idx = [0]
-            for item in items:
-                if isinstance(item, dict):
-                    global_idx[0] += 1
-                    diagnose_item(item, global_idx, 0)
-                elif isinstance(item, list):
-                    diagnose_item(item, global_idx, 0)
-                else:
-                    st.info(f"无法识别的数据类型: {item}", icon="❓")
+            diagnose_item(items_to_diagnose, global_idx)
             st.success("诊断与分析完成。如需更详细建议，请参考schema.org官方文档或Google Search Gallery。")
         except Exception as e:
             st.error(f"解析失败：{e}")
+
 
 # Tab3: 外部资源
 with tabs[2]:
@@ -460,16 +522,16 @@ with tabs[3]:
     if st.button("对比并高亮差异", key="do_diff"):
         try:
             from deepdiff import DeepDiff
-            obj1 = json.loads(data1)
-            obj2 = json.loads(data2)
+            # 使用更安全的JSON提取
+            obj1 = json.loads(auto_extract_json(data1))
+            obj2 = json.loads(auto_extract_json(data2))
             diff = DeepDiff(obj1, obj2, view='tree', ignore_order=True)
             if not diff:
                 st.success("两个结构化数据完全一致！")
             else:
-                for k, v in diff.items():
-                    st.warning(f"{k}")
-                    for item in v:
-                        st.code(str(item), language='json')
+                st.write("差异分析结果:")
+                st.json(diff.to_json())
+
         except Exception as e:
             st.error(f"对比失败：{e}")
     st.markdown("---")
@@ -480,21 +542,27 @@ with tabs[3]:
         try:
             import requests
             from bs4 import BeautifulSoup
-            resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+            resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"})
             soup = BeautifulSoup(resp.text, 'html.parser')
             scripts = soup.find_all('script', type='application/ld+json')
             types = []
-            for s in scripts:
-                try:
-                    d = json.loads(s.string)
-                    if isinstance(d, dict):
-                        types.append(d.get('@type', '未知'))
-                    elif isinstance(d, list):
-                        types.extend([item.get('@type', '未知') for item in d if isinstance(item, dict)])
-                except:
-                    continue
-            st.success(f"共检测到{len(types)}个结构化数据块，类型：{', '.join(types)}")
-            st.json(types)
+            if not scripts:
+                st.warning("未在该URL中检测到 'application/ld+json' 类型的结构化数据。")
+            else:
+                for s_idx, s in enumerate(scripts):
+                    try:
+                        d = json.loads(s.string)
+                        st.write(f"第 {s_idx+1} 个 Script 块:")
+                        if isinstance(d, dict):
+                            types.append(d.get('@type', '未知'))
+                        elif isinstance(d, list):
+                            types.extend([item.get('@type', '未知') for item in d if isinstance(item, dict)])
+                        st.json(d)
+                    except Exception as e:
+                        st.error(f"解析第 {s_idx+1} 个 script 块失败: {e}")
+                        st.code(s.string, language='json')
+                st.success(f"检测完成！共发现以下类型的结构化数据：`{', '.join(types)}`")
+
         except Exception as e:
             st.error(f"检测失败：{e}")
     st.markdown("---")
@@ -507,13 +575,16 @@ with tabs[3]:
         {"type": "Event", "desc": "活动结构化案例", "json": {"@context": "https://schema.org", "@type": "Event", "name": "技术大会", "startDate": "2025-12-15T09:00:00+08:00"}}
     ]
     kb_query = st.text_input("搜索schema.org字段/案例", key="kb_query")
-    kb_results = [item for item in kb if kb_query.lower() in item['type'].lower() or kb_query in item['desc']]
-    for item in kb_results:
-        st.markdown(f"**{item['type']}** - {item['desc']}")
-        st.code(json.dumps(item['json'], ensure_ascii=False, indent=2), language='json')
-        if st.button(f"插入到编辑区: {item['type']}", key=f"insert_{item['type']}"):
-            st.session_state['editor_content'] = json.dumps(item['json'], ensure_ascii=False, indent=2)
-            st.toast(f"已插入{item['type']}案例到编辑区！", icon="✅")
+    if kb_query:
+        kb_results = [item for item in kb if kb_query.lower() in item['type'].lower() or kb_query.lower() in item['desc'].lower() or kb_query in json.dumps(item['json'])]
+        for item in kb_results:
+            with st.expander(f"**{item['type']}** - {item['desc']}"):
+                st.code(json.dumps(item['json'], ensure_ascii=False, indent=2), language='json')
+                if st.button(f"使用此模板", key=f"insert_{item['type']}"):
+                    st.session_state['editor_content'] = f'<script type="application/ld+json">\n{json.dumps(item["json"], ensure_ascii=False, indent=2)}\n</script>'
+                    st.toast(f"已将 {item['type']} 案例应用到编辑区！请切换到“生成/编辑”选项卡查看。")
+                    st.rerun()
+
     st.markdown("---")
     # 4. 内容与结构一体化编辑
     st.subheader("内容与结构一体化编辑")
@@ -537,24 +608,26 @@ with tabs[3]:
     if uploaded:
         try:
             tpl = json.load(uploaded)
-            st.session_state['market_templates'].append({"json": tpl, "score": 0, "fav": False})
+            st.session_state['market_templates'].append({"json": tpl, "score": 0, "fav": False, "name": uploaded.name})
             st.toast("模板上传成功！", icon="✅")
-            st.experimental_rerun()
+            st.rerun()
         except Exception as e:
             st.error(f"模板上传失败：{e}")
+    
+    st.write("社区模板:")
     for i, tpl in enumerate(st.session_state['market_templates']):
-        st.code(json.dumps(tpl['json'], ensure_ascii=False, indent=2), language='json')
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button(f"收藏", key=f"fav_market_{i}"):
+        with st.expander(f"模板: {tpl.get('name', '未命名')} | 评分: {tpl['score']} | {'⭐' if tpl['fav'] else '☆'}"):
+            st.code(json.dumps(tpl['json'], ensure_ascii=False, indent=2), language='json')
+            c1, c2, c3 = st.columns(3)
+            if c1.button(f"使用", key=f"use_market_{i}"):
+                st.session_state['editor_content'] = f'<script type="application/ld+json">\n{json.dumps(tpl["json"], ensure_ascii=False, indent=2)}\n</script>'
+                st.toast(f"已应用模板！请切换到“生成/编辑”选项卡查看。")
+                st.rerun()
+            if c2.button(f"收藏", key=f"fav_market_{i}"):
                 tpl['fav'] = not tpl['fav']
-                st.experimental_rerun()
-        with col2:
-            if st.button(f"评分+1", key=f"score_market_{i}"):
+                st.rerun()
+            if c3.button(f"评分+1", key=f"score_market_{i}"):
                 tpl['score'] += 1
-                st.experimental_rerun()
-        st.markdown(f"收藏: {'⭐' if tpl['fav'] else '☆'} | 评分: {tpl['score']}")
-    st.download_button("下载示例模板", data=json.dumps({"@context": "https://schema.org", "@type": "Product", "name": "示例商品"}, ensure_ascii=False, indent=2), file_name="product_template.json")
+                st.rerun()
 
-# 预留：结构化数据解析、诊断、多类型合并等功能
-# ...
+    st.download_button("下载示例模板", data=json.dumps({"@context": "https://schema.org", "@type": "Product", "name": "示例商品"}, ensure_ascii=False, indent=2), file_name="product_template.json")
