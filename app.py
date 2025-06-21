@@ -39,7 +39,6 @@ def extract_json_from_script(script_str: str) -> str:
         if start_pos == -1:
             return "{}"
 
-        # Find the corresponding closing bracket/brace
         if script_str[start_pos] == '[':
             end_pos = script_str.rfind(']') + 1
         else:
@@ -53,6 +52,7 @@ def extract_json_from_script(script_str: str) -> str:
         return "{}"
 
 def get_type_brief(type_name):
+    # This function and the next ones are for display/logic, no changes needed.
     briefs = {
         'Organization': '用于描述公司、机构等，有助于品牌知识面板展示。', 'Corporation': '用于描述公司、机构等，有助于品牌知识面板展示。',
         'LocalBusiness': '本地企业，适合有实体门店的商家，可提升本地搜索曝光。', 'Product': '产品信息，支持价格、库存、评论等，利于获得商品富摘要。',
@@ -72,24 +72,6 @@ def get_required_fields(type_name):
         'JobPosting': ['@context', '@type', 'title', 'description', 'datePosted', 'hiringOrganization'],
     }
     return required.get(type_name, ['@context', '@type'])
-
-def get_recommended_fields(type_name):
-    recommended = {
-        'Organization': ['url', 'logo', 'contactPoint', 'sameAs'], 'Corporation': ['url', 'logo', 'contactPoint', 'sameAs'],
-        'Product': ['image', 'description', 'brand', 'review'], 'FAQPage': [], 'BreadcrumbList': [], 'NewsArticle': ['image', 'dateModified'],
-        'Event': ['description', 'image'], 'HowTo': ['image', 'description'], 'JobPosting': ['employmentType', 'jobLocation'],
-    }
-    return recommended.get(type_name, [])
-
-def get_google_rich_snippet_support(type_name):
-    support = {
-        'Organization': '支持品牌知识面板（Brand Panel）', 'Corporation': '支持品牌知识面板（Brand Panel）',
-        'Product': '支持商品富摘要（Product Rich Result）', 'FAQPage': '支持FAQ富摘要（FAQ Rich Result）',
-        'BreadcrumbList': '支持面包屑富摘要（Breadcrumb Rich Result）', 'NewsArticle': '支持Top Stories等新闻富摘要。',
-        'Event': '支持活动富摘要（Event Rich Result）', 'HowTo': '支持HowTo富摘要（HowTo Rich Result）',
-        'JobPosting': '支持职位富摘要（Job Posting Rich Result）',
-    }
-    return support.get(type_name, '无特殊富摘要，但有助于SEO结构化。')
 
 # --- 主程序 ---
 templates = get_internal_templates()
@@ -119,12 +101,8 @@ THEMES = {
 }
 cur_theme = THEMES[st.session_state.get('theme', '大地色')]
 
-st.markdown(f"""
-<style>
-/* CSS styles here, no changes needed from your original code. 
-   For brevity, the full CSS block is omitted, but it should be here in your actual file. */
-</style>
-""", unsafe_allow_html=True)
+# CSS部分为了简洁省略，请将您原来的CSS代码粘贴在这里
+st.markdown(f"""<style> ... </style>""", unsafe_allow_html=True)
 
 
 # --- 侧边栏 ---
@@ -140,7 +118,6 @@ with st.sidebar:
     if 'tab_idx' not in st.session_state:
         st.session_state['tab_idx'] = 0
 
-    navs = ["生成/编辑", "解析/诊断", "外部资源"]
     if st.button("生成/编辑", key="nav_gen", use_container_width=True): st.session_state.tab_idx = 0
     if st.button("解析/诊断", key="nav_parse", use_container_width=True): st.session_state.tab_idx = 1
     if st.button("外部资源", key="nav_res", use_container_width=True): st.session_state.tab_idx = 2
@@ -148,18 +125,18 @@ with st.sidebar:
     st.markdown("---")
 
     st.markdown("#### 主题切换")
-    theme = st.selectbox("选择主题", list(THEMES.keys()), index=list(THEMES.keys()).index(st.session_state['theme']))
+    theme = st.selectbox("选择主题", list(THEMES.keys()), index=list(THEMES.keys()).index(st.session_state.get('theme', '大地色')))
     if theme != st.session_state['theme']:
         st.session_state['theme'] = theme
         st.rerun()
 
     st.markdown("---")
 
+
 # --- 主页面 ---
 st.title("结构化数据生成与解析工具")
 tabs = st.tabs(["生成/编辑", "解析/诊断", "外部资源", "高级功能"])
 
-# --- Tab 1: 生成/编辑 ---
 with tabs[0]:
     st.header("结构化数据生成与编辑")
 
@@ -175,7 +152,7 @@ with tabs[0]:
     st.session_state['selected_types'] = selected_types
 
     json_array = []
-    effective_selection = selected_types if selected_types else valid_defaults
+    effective_selection = selected_types or valid_defaults
 
     for t in effective_selection:
         raw_code = templates.get(t, "{}")
@@ -215,22 +192,14 @@ with tabs[0]:
         st.error(f"JSON格式有误，请检查：{e}")
         st.code(user_script, language='html')
 
-
-# --- Tab 2: 解析/诊断 ---
 with tabs[1]:
-    st.header("结构化数据诊断与SEO分析")
-    # ... Tab 2 code here ...
-    pass
+    st.header("解析/诊断")
+    # Add your parsing/diagnosing UI here
 
-
-# --- Tab 3: 外部资源 ---
 with tabs[2]:
-    st.header("常用结构化数据工具与文档")
-    # ... Tab 3 code here ...
-    pass
+    st.header("外部资源")
+    # Add your resources UI here
 
-# --- Tab 4: 高级功能 ---
 with tabs[3]:
     st.header("高级功能")
-    # ... Tab 4 code here ...
-    pass
+    # Add your advanced features UI here
