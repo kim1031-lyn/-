@@ -4,43 +4,12 @@ import os
 from typing import List
 import base64
 
-# ======================= 调试代码开始 =======================
-# 这部分代码将帮助我们诊断云端服务器的文件系统问题
-st.write("--- 调试信息 ---")
-try:
-    # 获取当前工作目录
-    cwd = os.getcwd()
-    st.write(f"当前工作目录 (Current Working Directory): {cwd}")
-
-    # 列出当前目录下的所有文件和文件夹
-    st.write("当前目录内容 (Contents of Current Directory):")
-    st.write(os.listdir('.'))
-
-    # 尝试列出 templates 文件夹的内容
-    templates_path = 'templates'
-    st.write(f"检查 '{templates_path}' 文件夹是否存在...")
-    if os.path.exists(templates_path):
-        st.success(f"文件夹 '{templates_path}' 存在！")
-        st.write(f"'{templates_path}' 文件夹内容:")
-        st.write(os.listdir(templates_path))
-    else:
-        st.error(f"致命错误：在当前目录下找不到 '{templates_path}' 文件夹！")
-        st.info("请检查您的GitHub仓库，确认 'templates' 文件夹（全小写）和其中的 'structured_data_templates.json' 文件已正确上传。")
-
-
-except Exception as e:
-    st.error(f"在调试阶段发生异常: {e}")
-st.write("--- 调试信息结束 ---")
-# ======================== 调试代码结束 ========================
-
-
 st.set_page_config(page_title="结构化数据工具", layout="wide")
 
 # 加载模板库
 def load_templates():
     path = 'templates/structured_data_templates.json'
     if not os.path.exists(path):
-        # 即使这里有检查，上面的调试代码会更早地暴露问题
         st.error(f"找不到模板文件: {path}，请检查文件路径和上传情况。")
         st.stop()
     with open(path, 'r', encoding='utf-8') as f:
@@ -48,6 +17,20 @@ def load_templates():
 
 # 解析出JSON部分（去除<script>标签）
 def extract_json_from_script(script_str):
+    # 更鲁棒的提取方法，处理前后可能存在的空格或换行
+    try:
+        start = script_str.find('{')
+        end = script_str.rfind('}') + 1
+        # 进一步处理数组的情况
+        if script_str.strip().startswith('<script type="application/ld+json">\n['):
+            start = script_str.find('[')
+            end = script_str.rfind(']') + 1
+        
+        if start != -1 and end != 0:
+            return script_str[start:end]
+    except Exception:
+        pass # 如果出错，则使用旧方法
+
     lines = script_str.strip().splitlines()
     json_lines = [line for line in lines if not line.strip().startswith('<script') and not line.strip().startswith('</script>')]
     return '\n'.join(json_lines)
@@ -293,7 +276,8 @@ with st.sidebar:
 
     # 主题切换
     st.markdown("#### 主题切换")
-    theme = st.selectbox("选择主题", list(THEMES.keys()), index=list(THEKES.keys()).index(st.session_state['theme']))
+    # 修正了这里的拼写错误 THEKES -> THEMES
+    theme = st.selectbox("选择主题", list(THEMES.keys()), index=list(THEMES.keys()).index(st.session_state['theme']))
     if theme != st.session_state['theme']:
         st.session_state['theme'] = theme
         st.rerun()
@@ -354,11 +338,14 @@ with tabs[0]:
     # 合并所有选中类型的JSON为一个数组
     json_array = []
     for t in selected_types:
-        raw_code = templates[t]
+        raw_code = templates.get(t, "{}") # 使用 .get() 避免key不存在的错误
         json_code = extract_json_from_script(raw_code)
         try:
             parsed = json.loads(json_code)
-            json_array.append(parsed)
+            if isinstance(parsed, list): # 如果模板本身是数组（如ImageObject）
+                json_array.extend(parsed)
+            else:
+                json_array.append(parsed)
         except Exception:
             pass
     
@@ -375,7 +362,6 @@ with tabs[0]:
     
     # 编辑区内容联动
     # 当选择的类型变化时，更新编辑区内容
-    # 创建一个唯一的key来表示当前的选择状态
     selection_key = ",".join(sorted(selected_types))
     if 'last_selection_key' not in st.session_state or st.session_state['last_selection_key'] != selection_key:
         st.session_state['editor_content'] = script_block
@@ -384,26 +370,7 @@ with tabs[0]:
     user_script = st.text_area("请直接编辑下方完整代码，包括<script>标签", value=st.session_state['editor_content'], height=400, key="main_editor")
     st.session_state['editor_content'] = user_script
     
-    # 自动提取JSON部分并校验
-    def extract_json_from_full_script(s):
-        try:
-            # 更鲁棒的提取方法，处理前后可能存在的空格或换行
-            start = s.find('{')
-            end = s.rfind('}') + 1
-            if start != -1 and end != 0:
-                 # 尝试处理数组的情况
-                if s.strip().startswith('<script type="application/ld+json">\n[') :
-                    start = s.find('[')
-                    end = s.rfind(']') + 1
-                return s[start:end]
-        except Exception:
-            pass
-        # 旧方法作为备用
-        lines = s.strip().splitlines()
-        json_lines = [line for line in lines if not line.strip().startswith('<script') and not line.strip().startswith('</script>')]
-        return '\n'.join(json_lines)
-
-    json_part = extract_json_from_full_script(user_script)
+    json_part = extract_json_from_script(user_script)
     try:
         parsed = json.loads(json_part)
         formatted = json.dumps(parsed, ensure_ascii=False, indent=2)
@@ -426,19 +393,14 @@ with tabs[1]:
     st.header("结构化数据诊断与SEO分析")
     st.markdown("粘贴完整<script>或JSON，获得专业SEO建议和诊断。")
     input_code = st.text_area("粘贴代码", height=250, key="parse_input")
-    def auto_extract_json(s):
-        if '<script' in s:
-            return extract_json_from_full_script(s) # 使用上面改进的函数
-        return s
     
     if st.button("诊断分析", key="parse_btn"):
-        json_part_to_diagnose = auto_extract_json(input_code)
+        json_part_to_diagnose = extract_json_from_script(input_code)
+        
         def diagnose_item(item, global_idx, level=0):
-            prefix = "&nbsp;&nbsp;" * level * 2 # 增加缩进
-            title_prefix = "#" * (3 + min(level, 2))  # h3/h4/h5
-            
             # 卡片式包裹
             st.markdown(f"<div class='diagnose-card' style='margin-left: {level*20}px'>", unsafe_allow_html=True)
+            title_prefix = "h4" if level == 0 else "h5"
 
             if isinstance(item, dict):
                 type_name = item.get('@type', '未知')
@@ -476,7 +438,7 @@ with tabs[1]:
             elif isinstance(item, list):
                  st.info(f"这是一个结构化数据数组，共包含 {len(item)} 项。")
                  for sub_item in item:
-                    if isinstance(sub_item, dict):
+                    if isinstance(sub_item, (dict, list)):
                         global_idx[0] += 1
                         diagnose_item(sub_item, global_idx, level+1)
                     else:
@@ -523,8 +485,8 @@ with tabs[3]:
         try:
             from deepdiff import DeepDiff
             # 使用更安全的JSON提取
-            obj1 = json.loads(auto_extract_json(data1))
-            obj2 = json.loads(auto_extract_json(data2))
+            obj1 = json.loads(extract_json_from_script(data1))
+            obj2 = json.loads(extract_json_from_script(data2))
             diff = DeepDiff(obj1, obj2, view='tree', ignore_order=True)
             if not diff:
                 st.success("两个结构化数据完全一致！")
